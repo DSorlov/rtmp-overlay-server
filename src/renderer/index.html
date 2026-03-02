@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RTMP Overlay Server</title>
+<style>
+  :root {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --bg-card: #1e2a45;
+    --bg-input: #0f1929;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0b0;
+    --accent: #4fc3f7;
+    --accent-hover: #29b6f6;
+    --success: #66bb6a;
+    --error: #ef5350;
+    --warning: #ffa726;
+    --border: #2a3a5a;
+    --sidebar-w: 260px;
+    --tabbar-w: 48px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ──────────────────────────── */
+  header {
+    background: var(--bg-secondary);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 14px; font-weight: 600; color: var(--accent); }
+  header .info { font-size: 11px; color: var(--text-secondary); font-family: monospace; }
+  header .info span { color: var(--accent); }
+
+  /* ── Main layout ─────────────────────── */
+  .app {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ── Tab bar (left) ──────────────────── */
+  .tab-bar {
+    width: var(--tabbar-w);
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 0;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .tab-btn {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    transition: background .15s, color .15s;
+    position: relative;
+  }
+  .tab-btn:hover { background: rgba(79, 195, 247, .08); color: var(--text-primary); }
+  .tab-btn.active {
+    background: rgba(79, 195, 247, .15);
+    color: var(--accent);
+  }
+  .tab-btn.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    background: var(--accent);
+    border-radius: 0 3px 3px 0;
+  }
+  .tab-btn .tab-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text-secondary);
+    flex-shrink: 0;
+  }
+  .tab-btn .tab-dot.running  { background: var(--success); box-shadow: 0 0 4px var(--success); }
+  .tab-btn .tab-dot.starting { background: var(--warning); animation: pulse 1s infinite; }
+  .tab-btn .tab-dot.error    { background: var(--error); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ── Preview area (center) ───────────── */
+  .preview-area {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: #0a0a0a;
+    position: relative;
+  }
+
+  .preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .preview-header .left { display: flex; align-items: center; gap: 8px; }
+  .preview-header h2 { font-size: 13px; font-weight: 600; }
+  .preview-header .meta { font-size: 10px; color: var(--text-secondary); font-family: monospace; }
+  .preview-header .stats { display: flex; gap: 5px; align-items: center; }
+
+  .stat-badge {
+    font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px;
+    font-family: monospace; display: flex; align-items: center; gap: 3px; white-space: nowrap;
+  }
+  .stat-pub {
+    background: rgba(102, 187, 106, .15); color: var(--success); border: 1px solid rgba(102, 187, 106, .3);
+  }
+  .stat-pub.off {
+    background: rgba(160, 160, 176, .1); color: var(--text-secondary); border: 1px solid rgba(160, 160, 176, .2);
+  }
+  .stat-viewers {
+    background: rgba(79, 195, 247, .15); color: var(--accent); border: 1px solid rgba(79, 195, 247, .3);
+  }
+
+  .preview-pane {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .preview-pane img { max-width: 100%; max-height: 100%; object-fit: contain; display: none; }
+  .preview-pane .hint { color: var(--text-secondary); font-size: 13px; }
+
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--text-secondary); flex-shrink: 0;
+  }
+  .dot.running  { background: var(--success); box-shadow: 0 0 5px var(--success); }
+  .dot.starting { background: var(--warning); animation: pulse 1s infinite; }
+  .dot.error    { background: var(--error); }
+
+  /* ── Sidebar (right) ─────────────────── */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--bg-card);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .sidebar-section {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-section:last-child { border-bottom: none; flex: 1; min-height: 0; }
+
+  .section-head {
+    padding: 8px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .section-body {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+  }
+
+  /* ── Form elements ───────────────────── */
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+
+  select, input[type=text] {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: inherit;
+  }
+  select:focus, input:focus { outline: none; border-color: var(--accent); }
+
+  .btn {
+    padding: 6px 14px; border: none; border-radius: 4px;
+    font-size: 11px; font-weight: 600; cursor: pointer; transition: filter .15s;
+    width: 100%;
+  }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-go  { background: var(--success); color: #fff; }
+  .btn-end { background: var(--error); color: #fff; }
+  .btn:hover:not(:disabled) { filter: brightness(1.15); }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .status-row .status-label { font-weight: 600; text-transform: capitalize; }
+  .status-row .status-label.running  { color: var(--success); }
+  .status-row .status-label.starting { color: var(--warning); }
+  .status-row .status-label.stopped  { color: var(--text-secondary); }
+  .status-row .status-label.error    { color: var(--error); }
+
+  .err-msg { font-size: 10px; color: var(--error); padding: 4px 0; }
+
+  /* ── Placeholder grid ────────────────── */
+  .ph-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ph-field { display: flex; flex-direction: column; gap: 2px; }
+  .ph-field label {
+    font-size: 10px;
+    color: var(--accent);
+    font-family: monospace;
+  }
+  .ph-field input {
+    font-family: monospace;
+  }
+  .ph-empty {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 4px 0;
+  }
+
+  /* ── Settings view ───────────────────── */
+  .settings-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .settings-header {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .settings-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 600px;
+  }
+  .settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .settings-group h3 {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+  }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .settings-row label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    width: 100px;
+    flex-shrink: 0;
+  }
+  .settings-row input, .settings-row select {
+    flex: 1;
+    max-width: 220px;
+  }
+  .settings-row input[type=number] {
+    width: 80px;
+    max-width: 80px;
+    -moz-appearance: textfield;
+  }
+  .settings-row input[type=number]::-webkit-inner-spin-button,
+  .settings-row input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .settings-row input[type=color] {
+    width: 40px;
+    max-width: 40px;
+    height: 30px;
+    padding: 2px;
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 4px;
+    cursor: pointer;
+    flex: none;
+  }
+  .stream-color-input {
+    width: 30px !important;
+    max-width: 30px !important;
+    height: 26px !important;
+  }
+  .chroma-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chroma-row label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    flex-shrink: 0;
+  }
+  .chroma-row input[type=color] {
+    width: 30px;
+    height: 24px;
+    padding: 1px;
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .chroma-row .color-hex {
+    font-size: 10px;
+    font-family: monospace;
+    color: var(--text-primary);
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 4px;
+    padding: 3px 6px;
+    width: 66px;
+    text-transform: uppercase;
+  }
+  .chroma-row .chroma-reset {
+    font-size: 9px;
+    color: var(--text-secondary);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 5px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .chroma-row .chroma-reset:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .color-hex {
+    font-size: 11px;
+    font-family: monospace;
+    color: var(--text-primary);
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 4px;
+    padding: 4px 8px;
+    width: 80px;
+    text-transform: uppercase;
+  }
+  .stream-keys-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-left: 4px;
+  }
+  .settings-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 6px;
+  }
+  .btn-settings {
+    padding: 7px 20px; border: none; border-radius: 4px;
+    font-size: 11px; font-weight: 600; cursor: pointer;
+    background: var(--accent); color: #000;
+    transition: filter .15s;
+  }
+  .btn-settings:hover { filter: brightness(1.15); }
+  .btn-settings:disabled { opacity: .4; cursor: not-allowed; }
+  .settings-msg {
+    font-size: 11px;
+    padding: 6px 0;
+  }
+  .settings-msg.ok { color: var(--success); }
+  .settings-msg.err { color: var(--error); }
+
+  .settings-note {
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+
+  /* ── Settings tab icon ───────────────── */
+  .tab-bar .tab-spacer { flex: 1; }
+  .tab-btn .tab-icon { font-size: 16px; line-height: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>RTMP Overlay Server</h1>
+  <div class="info">API <span id="api-url">:3000</span> &middot; RTMP <span id="rtmp-info">:1935</span></div>
+</header>
+
+<div class="app" id="app">
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-secondary)">Loading&hellip;</div>
+</div>
+
+<script>
+const api = window.electronAPI;
+
+let streams = [];
+let templates = [];
+let templatePlaceholders = {};
+let rtmpStats = {};
+let initReceived = false;
+let activeTab = null;
+let currentApiPort = 3000;
+let currentRtmpPort = 1935;
+let currentChromaKeyColor = '#00FF00';
+let hostIP = '';
+
+// ── debounce helper ───────────────────────
+function debounce(fn, ms) {
+  let t;
+  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+
+// ── IPC ───────────────────────────────────
+if (api) {
+  api.on('init-data', (data) => {
+    initReceived = true;
+    streams = data.streams;
+    templates = data.templates;
+    templatePlaceholders = data.templatePlaceholders || {};
+    currentApiPort = data.apiPort;
+    currentRtmpPort = data.rtmpPort;
+    currentChromaKeyColor = data.chromaKeyColor || '#00FF00';
+    hostIP = data.hostIP || '';
+    document.getElementById('api-url').textContent = `:${data.apiPort}`;
+    document.getElementById('rtmp-info').textContent = `:${data.rtmpPort}`;
+    // Preserve settings tab if it was active; otherwise pick first stream
+    if (activeTab !== 'settings') {
+      activeTab = streams.length > 0 ? streams[0].id : null;
+    }
+    buildUI();
+  });
+
+  api.on('stream-update', (state) => {
+    const idx = streams.findIndex(s => s.id === state.id);
+    if (idx !== -1) streams[idx] = state;
+    patchTab(state.id);
+    if (state.id === activeTab && activeTab !== 'settings') patchActiveView();
+  });
+
+  api.on('preview-frame', ({ streamId, dataUrl }) => {
+    if (streamId !== activeTab) return;
+    const img = document.getElementById('preview-img');
+    const hint = document.getElementById('preview-hint');
+    if (img) { img.src = dataUrl; img.style.display = 'block'; }
+    if (hint) hint.style.display = 'none';
+  });
+
+  api.on('template-placeholders', ({ template, placeholders }) => {
+    templatePlaceholders[template] = placeholders;
+    for (const s of streams) {
+      if (s.currentTemplate === template && s.id === activeTab) rebuildPlaceholders();
+    }
+  });
+
+  api.on('templates-updated', (t) => { templates = t; buildUI(); });
+
+  api.on('rtmp-stats', (stats) => {
+    rtmpStats = stats;
+    if (activeTab !== null && activeTab !== 'settings') patchActiveView();
+  });
+
+  api.on('settings-saved', (result) => {
+    const msg = document.getElementById('settings-msg');
+    if (!msg) return;
+    if (result.success) {
+      msg.className = 'settings-msg ok';
+      msg.textContent = 'Settings saved and applied.';
+    } else {
+      msg.className = 'settings-msg err';
+      msg.textContent = `Error: ${result.error}`;
+    }
+    const btn = document.getElementById('settings-save-btn');
+    if (btn) btn.disabled = false;
+  });
+} else {
+  document.getElementById('app').innerHTML =
+    '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:#ef5350">electronAPI unavailable</div>';
+}
+
+// ── Switch tab ────────────────────────────
+function switchTab(id) {
+  activeTab = id;
+  // Update tab active states
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.id == id);
+  });
+  if (id === 'settings') {
+    buildSettingsView();
+  } else {
+    buildActiveView();
+  }
+}
+
+// ── Build full UI ─────────────────────────
+function buildUI() {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  // Tab bar
+  const tabBar = document.createElement('div');
+  tabBar.className = 'tab-bar';
+  tabBar.id = 'tab-bar';
+  for (const s of streams) {
+    const btn = document.createElement('button');
+    btn.className = `tab-btn${s.id === activeTab ? ' active' : ''}`;
+    btn.dataset.id = s.id;
+    btn.title = `Stream ${s.id}`;
+    btn.innerHTML = `<span class="tab-dot ${s.status}" id="tab-dot-${s.id}"></span><span>${s.id}</span>`;
+    btn.addEventListener('click', () => switchTab(s.id));
+    tabBar.appendChild(btn);
+  }
+
+  // Spacer to push settings to bottom
+  const spacer = document.createElement('div');
+  spacer.className = 'tab-spacer';
+  tabBar.appendChild(spacer);
+
+  // Settings tab button
+  const settingsBtn = document.createElement('button');
+  settingsBtn.className = `tab-btn${activeTab === 'settings' ? ' active' : ''}`;
+  settingsBtn.dataset.id = 'settings';
+  settingsBtn.title = 'Settings';
+  settingsBtn.innerHTML = '<span class="tab-icon">⚙</span>';
+  settingsBtn.addEventListener('click', () => switchTab('settings'));
+  tabBar.appendChild(settingsBtn);
+
+  app.appendChild(tabBar);
+
+  // Preview area
+  const previewArea = document.createElement('div');
+  previewArea.className = 'preview-area';
+  previewArea.id = 'preview-area';
+  app.appendChild(previewArea);
+
+  // Sidebar
+  const sidebar = document.createElement('div');
+  sidebar.className = 'sidebar';
+  sidebar.id = 'sidebar';
+  app.appendChild(sidebar);
+
+  if (activeTab === 'settings') {
+    buildSettingsView();
+  } else {
+    buildActiveView();
+  }
+}
+
+// ── Build the active stream view (preview + sidebar) ──
+function buildActiveView() {
+  const s = streams.find(x => x.id === activeTab);
+  if (!s) return;
+
+  // Restore sidebar visibility (may have been hidden by settings view)
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) sidebar.style.display = '';
+
+  buildPreviewArea(s);
+  buildSidebar(s);
+}
+
+// ── Preview area ──────────────────────────
+function buildPreviewArea(s) {
+  const area = document.getElementById('preview-area');
+  area.innerHTML = '';
+
+  // Preview header
+  const hdr = document.createElement('div');
+  hdr.className = 'preview-header';
+  hdr.id = 'preview-header';
+
+  const st = rtmpStats[s.streamName];
+  const pub = st && st.publishing;
+  const viewers = (st && st.viewers) || 0;
+
+  hdr.innerHTML = `
+    <div class="left">
+      <span class="dot ${s.status}" id="dot-${s.id}"></span>
+      <h2>Stream ${s.id}</h2>
+      <span class="meta" id="meta-${s.id}">${esc(displayUrl(s))}</span>
+    </div>
+    <div class="stats" id="stats-${s.id}">
+      <span class="stat-badge ${pub ? 'stat-pub' : 'stat-pub off'}">● ${pub ? 'LIVE' : 'OFF'}</span>
+      <span class="stat-badge stat-viewers">&#8505; ${viewers} viewer${viewers !== 1 ? 's' : ''}</span>
+    </div>`;
+  area.appendChild(hdr);
+
+  // Preview pane
+  const pane = document.createElement('div');
+  pane.className = 'preview-pane';
+  pane.innerHTML = `<img id="preview-img" alt=""><span class="hint" id="preview-hint">${s.status === 'stopped' ? 'Stopped' : s.status === 'starting' ? 'Starting…' : 'Loading…'}</span>`;
+  area.appendChild(pane);
+}
+
+// ── Sidebar ───────────────────────────────
+function buildSidebar(s) {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+
+  // ─ Control section ─
+  const ctrlSection = document.createElement('div');
+  ctrlSection.className = 'sidebar-section';
+
+  const ctrlHead = document.createElement('div');
+  ctrlHead.className = 'section-head';
+  ctrlHead.textContent = 'Control';
+  ctrlSection.appendChild(ctrlHead);
+
+  const ctrlBody = document.createElement('div');
+  ctrlBody.className = 'section-body';
+  ctrlBody.id = 'ctrl-body';
+
+  // Error
+  if (s.error) {
+    const e = document.createElement('div');
+    e.className = 'err-msg';
+    e.id = 'err-msg';
+    e.textContent = s.error;
+    ctrlBody.appendChild(e);
+  }
+
+  // Status row
+  const statusRow = document.createElement('div');
+  statusRow.className = 'status-row';
+  statusRow.id = 'status-row';
+  statusRow.innerHTML = `<span class="dot ${s.status}"></span><span class="status-label ${s.status}">${s.status}</span>`;
+  ctrlBody.appendChild(statusRow);
+
+  // Template
+  const tplField = document.createElement('div');
+  tplField.className = 'field';
+  const tplLabel = document.createElement('label');
+  tplLabel.textContent = 'Template';
+  const sel = document.createElement('select');
+  sel.id = `tpl-${s.id}`;
+  for (const t of templates) {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t.replace(/\.html$/, '');
+    if (t === s.currentTemplate) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  sel.addEventListener('change', () => onTemplateChange(s.id));
+  tplField.appendChild(tplLabel);
+  tplField.appendChild(sel);
+  ctrlBody.appendChild(tplField);
+
+  // Chroma key color
+  const chromaRow = document.createElement('div');
+  chromaRow.className = 'chroma-row';
+  chromaRow.id = 'chroma-row';
+  const chromaLabel = document.createElement('label');
+  chromaLabel.textContent = 'Chroma';
+  const chromaPicker = document.createElement('input');
+  chromaPicker.type = 'color';
+  chromaPicker.id = `chroma-${s.id}`;
+  chromaPicker.value = s.chromaKeyColor || currentChromaKeyColor;
+  const chromaHex = document.createElement('input');
+  chromaHex.type = 'text';
+  chromaHex.className = 'color-hex';
+  chromaHex.id = `chroma-hex-${s.id}`;
+  chromaHex.value = (s.chromaKeyColor || currentChromaKeyColor).toUpperCase();
+  chromaHex.maxLength = 7;
+  const chromaReset = document.createElement('button');
+  chromaReset.className = 'chroma-reset';
+  chromaReset.textContent = 'Default';
+  chromaReset.title = 'Reset to global default (' + currentChromaKeyColor + ')';
+  chromaPicker.addEventListener('change', () => {
+    chromaHex.value = chromaPicker.value.toUpperCase();
+    api.send('stream-action', { action: 'set-chroma', streamId: s.id, color: chromaPicker.value });
+  });
+  chromaHex.addEventListener('change', () => {
+    let v = chromaHex.value.trim();
+    if (!v.startsWith('#')) v = '#' + v;
+    if (/^#[0-9A-Fa-f]{6}$/.test(v)) {
+      chromaPicker.value = v;
+      chromaHex.value = v.toUpperCase();
+      api.send('stream-action', { action: 'set-chroma', streamId: s.id, color: v });
+    } else {
+      chromaHex.value = chromaPicker.value.toUpperCase();
+    }
+  });
+  chromaReset.addEventListener('click', () => {
+    chromaPicker.value = currentChromaKeyColor;
+    chromaHex.value = currentChromaKeyColor.toUpperCase();
+    api.send('stream-action', { action: 'set-chroma', streamId: s.id, color: '' });
+  });
+  chromaRow.appendChild(chromaLabel);
+  chromaRow.appendChild(chromaPicker);
+  chromaRow.appendChild(chromaHex);
+  chromaRow.appendChild(chromaReset);
+  ctrlBody.appendChild(chromaRow);
+
+  // Action button
+  const actionWrap = document.createElement('div');
+  actionWrap.id = 'action-wrap';
+  const btn = document.createElement('button');
+  if (s.status === 'running') {
+    btn.className = 'btn btn-end';
+    btn.textContent = 'Stop';
+    btn.onclick = () => api.send('stream-action', { action: 'stop', streamId: s.id });
+  } else {
+    btn.className = 'btn btn-go';
+    btn.textContent = s.status === 'starting' ? 'Starting…' : 'Start';
+    btn.disabled = s.status === 'starting';
+    btn.onclick = () => api.send('stream-action', { action: 'start', streamId: s.id });
+  }
+  actionWrap.appendChild(btn);
+  ctrlBody.appendChild(actionWrap);
+
+  ctrlSection.appendChild(ctrlBody);
+  sidebar.appendChild(ctrlSection);
+
+  // ─ Configuration section ─
+  const cfgSection = document.createElement('div');
+  cfgSection.className = 'sidebar-section';
+
+  const cfgHead = document.createElement('div');
+  cfgHead.className = 'section-head';
+  cfgHead.textContent = 'Configuration';
+  cfgSection.appendChild(cfgHead);
+
+  const cfgBody = document.createElement('div');
+  cfgBody.className = 'section-body';
+  cfgBody.id = 'ph-wrap';
+  fillPlaceholderFields(cfgBody, s);
+
+  cfgSection.appendChild(cfgBody);
+  sidebar.appendChild(cfgSection);
+}
+
+// ── Fill placeholder inputs ───────────────
+function fillPlaceholderFields(container, s) {
+  const keys = templatePlaceholders[s.currentTemplate] || [];
+  if (keys.length === 0) {
+    container.innerHTML = '<div class="ph-empty">No placeholders for this template</div>';
+    return;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'ph-grid';
+
+  for (const key of keys) {
+    const field = document.createElement('div');
+    field.className = 'ph-field';
+
+    const lbl = document.createElement('label');
+    lbl.textContent = key;
+
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = (s.placeholderData && s.placeholderData[key]) || '';
+    inp.placeholder = key;
+    inp.dataset.stream = String(s.id);
+    inp.dataset.key = key;
+    inp.addEventListener('input', debounce(() => sendPlaceholder(s.id), 300));
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendPlaceholder(s.id); });
+
+    field.appendChild(lbl);
+    field.appendChild(inp);
+    grid.appendChild(field);
+  }
+
+  container.innerHTML = '';
+  container.appendChild(grid);
+}
+
+// ── Rebuild only the placeholder section ──
+function rebuildPlaceholders() {
+  const s = streams.find(x => x.id === activeTab);
+  const ph = document.getElementById('ph-wrap');
+  if (!s || !ph) return;
+  fillPlaceholderFields(ph, s);
+}
+
+// ── Send current placeholder values to main ──
+function sendPlaceholder(id) {
+  const ph = document.getElementById('ph-wrap');
+  if (!ph) return;
+  const data = {};
+  ph.querySelectorAll('input[data-key]').forEach(inp => {
+    data[inp.dataset.key] = inp.value;
+  });
+  api.send('stream-action', { action: 'set-data', streamId: id, data });
+}
+
+// ── Template change ───────────────────────
+function onTemplateChange(id) {
+  const sel = document.getElementById(`tpl-${id}`);
+  if (!sel) return;
+  const tpl = sel.value;
+
+  api.send('stream-action', { action: 'change-template', streamId: id, template: tpl });
+
+  const s = streams.find(x => x.id === id);
+  if (s) {
+    s.currentTemplate = tpl;
+    const newKeys = templatePlaceholders[tpl] || [];
+    const cleaned = {};
+    for (const k of newKeys) {
+      if (s.placeholderData && s.placeholderData[k] !== undefined) cleaned[k] = s.placeholderData[k];
+      else cleaned[k] = '';
+    }
+    s.placeholderData = cleaned;
+  }
+
+  if (templatePlaceholders[tpl]) {
+    rebuildPlaceholders();
+  } else {
+    api.send('get-template-placeholders', tpl);
+  }
+}
+
+// ── Patch a tab button (any stream, always) ──
+function patchTab(id) {
+  const s = streams.find(x => x.id === id);
+  if (!s) return;
+  const dot = document.getElementById(`tab-dot-${id}`);
+  if (dot) dot.className = `tab-dot ${s.status}`;
+}
+
+// ── Patch the active view (preview + sidebar) without full rebuild ──
+function patchActiveView() {
+  const s = streams.find(x => x.id === activeTab);
+  if (!s) return;
+
+  // Preview header dot
+  const dot = document.getElementById(`dot-${s.id}`);
+  if (dot) dot.className = `dot ${s.status}`;
+
+  // Preview hint
+  const hint = document.getElementById('preview-hint');
+  if (hint) {
+    if (s.status === 'stopped') { hint.textContent = 'Stopped'; hint.style.display = ''; }
+    else if (s.status === 'running') { hint.textContent = 'Loading…'; }
+    else if (s.status === 'starting') { hint.textContent = 'Starting…'; }
+  }
+
+  // Hide preview image when stopped
+  if (s.status === 'stopped') {
+    const img = document.getElementById('preview-img');
+    if (img) { img.style.display = 'none'; img.removeAttribute('src'); }
+    if (hint) hint.style.display = '';
+  }
+
+  // Stats
+  const st = rtmpStats[s.streamName];
+  const pub = st && st.publishing;
+  const viewers = (st && st.viewers) || 0;
+  const statsEl = document.getElementById(`stats-${s.id}`);
+  if (statsEl) {
+    statsEl.innerHTML = `
+      <span class="stat-badge ${pub ? 'stat-pub' : 'stat-pub off'}">● ${pub ? 'LIVE' : 'OFF'}</span>
+      <span class="stat-badge stat-viewers">&#8505; ${viewers} viewer${viewers !== 1 ? 's' : ''}</span>`;
+  }
+
+  // Status row in sidebar
+  const statusRow = document.getElementById('status-row');
+  if (statusRow) {
+    statusRow.innerHTML = `<span class="dot ${s.status}"></span><span class="status-label ${s.status}">${s.status}</span>`;
+  }
+
+  // Action button
+  const actionWrap = document.getElementById('action-wrap');
+  if (actionWrap) {
+    actionWrap.innerHTML = '';
+    const btn = document.createElement('button');
+    if (s.status === 'running') {
+      btn.className = 'btn btn-end';
+      btn.textContent = 'Stop';
+      btn.onclick = () => api.send('stream-action', { action: 'stop', streamId: s.id });
+    } else {
+      btn.className = 'btn btn-go';
+      btn.textContent = s.status === 'starting' ? 'Starting…' : 'Start';
+      btn.disabled = s.status === 'starting';
+      btn.onclick = () => api.send('stream-action', { action: 'start', streamId: s.id });
+    }
+    actionWrap.appendChild(btn);
+  }
+
+  // Template select
+  const sel = document.getElementById(`tpl-${s.id}`);
+  if (sel && sel.value !== s.currentTemplate) {
+    sel.value = s.currentTemplate;
+    rebuildPlaceholders();
+  }
+
+  // Sync placeholder input values without disrupting typing
+  const phWrap = document.getElementById('ph-wrap');
+  if (phWrap && s.placeholderData) {
+    const inputs = phWrap.querySelectorAll('input[data-key]');
+    const focused = document.activeElement;
+    inputs.forEach(inp => {
+      const newVal = s.placeholderData[inp.dataset.key] ?? '';
+      if (inp !== focused && inp.value !== newVal) {
+        inp.value = newVal;
+      }
+    });
+  }
+
+  // Error message
+  const ctrlBody = document.getElementById('ctrl-body');
+  if (ctrlBody) {
+    const existing = ctrlBody.querySelector('.err-msg');
+    if (s.error) {
+      if (existing) { existing.textContent = s.error; }
+      else { const e = document.createElement('div'); e.className = 'err-msg'; e.id = 'err-msg'; e.textContent = s.error; ctrlBody.insertBefore(e, ctrlBody.firstChild); }
+    } else if (existing) {
+      existing.remove();
+    }
+  }
+}
+
+// ── Build settings view ───────────────────
+function buildSettingsView() {
+  const area = document.getElementById('preview-area');
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+  sidebar.style.display = 'none';
+  area.innerHTML = '';
+  area.style.flex = '1';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'settings-view';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'settings-header';
+  hdr.textContent = 'Settings';
+  wrap.appendChild(hdr);
+
+  const body = document.createElement('div');
+  body.className = 'settings-body';
+
+  // ─ Server section ─
+  const serverGroup = document.createElement('div');
+  serverGroup.className = 'settings-group';
+  serverGroup.innerHTML = '<h3>Server</h3>';
+
+  // API port
+  const apiRow = document.createElement('div');
+  apiRow.className = 'settings-row';
+  apiRow.innerHTML = `<label>API Port</label>`;
+  const apiInp = document.createElement('input');
+  apiInp.type = 'number'; apiInp.id = 'set-api-port';
+  apiInp.min = '1024'; apiInp.max = '65535';
+  apiInp.value = String(currentApiPort);
+  apiRow.appendChild(apiInp);
+  serverGroup.appendChild(apiRow);
+
+  // RTMP port
+  const rtmpRow = document.createElement('div');
+  rtmpRow.className = 'settings-row';
+  rtmpRow.innerHTML = `<label>RTMP Port</label>`;
+  const rtmpInp = document.createElement('input');
+  rtmpInp.type = 'number'; rtmpInp.id = 'set-rtmp-port';
+  rtmpInp.min = '1024'; rtmpInp.max = '65535';
+  rtmpInp.value = String(currentRtmpPort);
+  rtmpRow.appendChild(rtmpInp);
+  serverGroup.appendChild(rtmpRow);
+
+  const portNote = document.createElement('div');
+  portNote.className = 'settings-note';
+  portNote.textContent = 'Changing RTMP port will stop all running streams.';
+  serverGroup.appendChild(portNote);
+
+  body.appendChild(serverGroup);
+
+  // ─ Overlay section ─
+  const overlayGroup = document.createElement('div');
+  overlayGroup.className = 'settings-group';
+  overlayGroup.innerHTML = '<h3>Overlay</h3>';
+
+  // Chroma key color
+  const colorRow = document.createElement('div');
+  colorRow.className = 'settings-row';
+  colorRow.innerHTML = `<label>Background Color</label>`;
+  const colorInp = document.createElement('input');
+  colorInp.type = 'color'; colorInp.id = 'set-chroma-color';
+  colorInp.value = currentChromaKeyColor;
+  const colorHex = document.createElement('input');
+  colorHex.type = 'text'; colorHex.className = 'color-hex';
+  colorHex.id = 'set-chroma-hex';
+  colorHex.value = currentChromaKeyColor;
+  colorHex.maxLength = 7;
+  colorInp.addEventListener('input', () => { colorHex.value = colorInp.value.toUpperCase(); });
+  colorHex.addEventListener('change', () => {
+    let v = colorHex.value.trim();
+    if (!v.startsWith('#')) v = '#' + v;
+    if (/^#[0-9A-Fa-f]{6}$/.test(v)) { colorInp.value = v; colorHex.value = v.toUpperCase(); }
+    else { colorHex.value = colorInp.value.toUpperCase(); }
+  });
+  colorRow.appendChild(colorInp);
+  colorRow.appendChild(colorHex);
+  overlayGroup.appendChild(colorRow);
+
+  const colorNote = document.createElement('div');
+  colorNote.className = 'settings-note';
+  colorNote.textContent = 'Default chroma key background. Streams can override individually from their control panel.';
+  overlayGroup.appendChild(colorNote);
+
+  body.appendChild(overlayGroup);
+
+  // ─ Streams section ─
+  const streamsGroup = document.createElement('div');
+  streamsGroup.className = 'settings-group';
+  streamsGroup.innerHTML = '<h3>Streams</h3>';
+
+  // Stream count
+  const countRow = document.createElement('div');
+  countRow.className = 'settings-row';
+  countRow.innerHTML = `<label>Stream Count</label>`;
+  const countInp = document.createElement('input');
+  countInp.type = 'number'; countInp.id = 'set-stream-count';
+  countInp.min = '1'; countInp.max = '12';
+  countInp.value = String(streams.length);
+  countInp.addEventListener('change', () => rebuildKeysList());
+  countRow.appendChild(countInp);
+  streamsGroup.appendChild(countRow);
+
+  // Reduction warning
+  const reduceNote = document.createElement('div');
+  reduceNote.className = 'settings-note';
+  reduceNote.textContent = 'Reducing count will stop and remove streams above the new limit.';
+  streamsGroup.appendChild(reduceNote);
+
+  // Stream keys list
+  const keysWrap = document.createElement('div');
+  keysWrap.id = 'stream-keys-wrap';
+  streamsGroup.appendChild(keysWrap);
+
+  body.appendChild(streamsGroup);
+
+  // ─ Actions ─
+  const actions = document.createElement('div');
+  actions.className = 'settings-actions';
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'btn-settings';
+  saveBtn.id = 'settings-save-btn';
+  saveBtn.textContent = 'Apply & Save';
+  saveBtn.addEventListener('click', applySettings);
+  actions.appendChild(saveBtn);
+  body.appendChild(actions);
+
+  // ─ Message ─
+  const msg = document.createElement('div');
+  msg.id = 'settings-msg';
+  msg.className = 'settings-msg';
+  body.appendChild(msg);
+
+  wrap.appendChild(body);
+  area.appendChild(wrap);
+
+  rebuildKeysList();
+}
+
+function rebuildKeysList() {
+  const keysWrap = document.getElementById('stream-keys-wrap');
+  if (!keysWrap) return;
+  keysWrap.innerHTML = '';
+
+  const countInp = document.getElementById('set-stream-count');
+  const count = Math.max(1, Math.min(12, parseInt(countInp.value) || streams.length));
+
+  const label = document.createElement('h3');
+  label.style.marginTop = '6px';
+  label.textContent = 'Stream Keys';
+  keysWrap.appendChild(label);
+
+  const list = document.createElement('div');
+  list.className = 'stream-keys-list';
+
+  for (let i = 1; i <= count; i++) {
+    const existing = streams.find(s => s.id === i);
+    const row = document.createElement('div');
+    row.className = 'settings-row';
+    const lbl = document.createElement('label');
+    lbl.textContent = `Stream ${i}`;
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.dataset.streamId = String(i);
+    inp.className = 'stream-key-input';
+    inp.value = existing ? existing.streamName : `overlay${i}`;
+    inp.placeholder = `overlay${i}`;
+    row.appendChild(lbl);
+    row.appendChild(inp);
+
+    // Show running indicator
+    if (existing && (existing.status === 'running' || existing.status === 'starting')) {
+      const badge = document.createElement('span');
+      badge.style.cssText = 'font-size:9px;color:var(--success);font-weight:700;flex-shrink:0;';
+      badge.textContent = '● LIVE';
+      row.appendChild(badge);
+    }
+
+    list.appendChild(row);
+  }
+
+  keysWrap.appendChild(list);
+}
+
+function applySettings() {
+  const countInp = document.getElementById('set-stream-count');
+  const apiInp = document.getElementById('set-api-port');
+  const rtmpInp = document.getElementById('set-rtmp-port');
+  const msgEl = document.getElementById('settings-msg');
+  const saveBtn = document.getElementById('settings-save-btn');
+
+  const streamCount = Math.max(1, Math.min(12, parseInt(countInp.value) || streams.length));
+  const apiPort = parseInt(apiInp.value) || currentApiPort;
+  const rtmpPort = parseInt(rtmpInp.value) || currentRtmpPort;
+  const chromaColorEl = document.getElementById('set-chroma-color');
+  const chromaKeyColor = chromaColorEl ? chromaColorEl.value : currentChromaKeyColor;
+
+  // Validate ports
+  if (apiPort < 1024 || apiPort > 65535 || rtmpPort < 1024 || rtmpPort > 65535) {
+    if (msgEl) { msgEl.className = 'settings-msg err'; msgEl.textContent = 'Ports must be between 1024 and 65535.'; }
+    return;
+  }
+  if (apiPort === rtmpPort) {
+    if (msgEl) { msgEl.className = 'settings-msg err'; msgEl.textContent = 'API and RTMP ports must be different.'; }
+    return;
+  }
+
+  // Collect stream keys
+  const streamKeys = {};
+  document.querySelectorAll('.stream-key-input').forEach(inp => {
+    const id = parseInt(inp.dataset.streamId);
+    const val = inp.value.trim();
+    if (id <= streamCount && val) streamKeys[id] = val;
+  });
+
+  // Check for duplicate keys
+  const keyVals = Object.values(streamKeys);
+  if (new Set(keyVals).size !== keyVals.length) {
+    if (msgEl) { msgEl.className = 'settings-msg err'; msgEl.textContent = 'Stream keys must be unique.'; }
+    return;
+  }
+
+  // Confirm if reducing streams that are active
+  const activeAbove = streams.filter(s => s.id > streamCount && (s.status === 'running' || s.status === 'starting'));
+  if (activeAbove.length > 0) {
+    const names = activeAbove.map(s => `Stream ${s.id}`).join(', ');
+    if (!confirm(`${names} ${activeAbove.length > 1 ? 'are' : 'is'} currently running and will be stopped. Continue?`)) return;
+  }
+
+  if (saveBtn) saveBtn.disabled = true;
+  if (msgEl) { msgEl.className = 'settings-msg'; msgEl.textContent = 'Applying…'; }
+
+  api.send('update-settings', { streamCount, streamKeys, apiPort, rtmpPort, chromaKeyColor });
+}
+
+// ── Build a display-friendly RTMP URL using the LAN IP ──
+function displayUrl(s) {
+  if (!hostIP) return s.rtmpUrl || '';
+  return `rtmp://${hostIP}:${currentRtmpPort}/live/${s.streamName}`;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Init request with retry ──
+function requestInit() {
+  if (initReceived) return;
+  if (api) api.send('request-init');
+  setTimeout(() => { if (!initReceived) requestInit(); }, 500);
+}
+requestInit();
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!--
+  Title Card Overlay Template
+  Placeholders: {{heading}}, {{subheading}}, {{logo}}
+  Full-screen centered title card for intros, outros, or segment transitions.
+  Elements hide automatically when their placeholder value is empty.
+-->
+<style>
+  .title-card {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: radial-gradient(ellipse at center, rgba(30, 42, 69, 0.95) 0%, rgba(10, 14, 26, 0.98) 100%);
+    animation: cardFadeIn 0.8s ease-out;
+  }
+
+  .title-card .card-logo {
+    max-height: 140px;
+    max-width: 400px;
+    object-fit: contain;
+    margin-bottom: 40px;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+  }
+
+  .title-card .heading {
+    color: #ffffff;
+    font-size: 72px;
+    font-weight: 800;
+    text-align: center;
+    letter-spacing: 2px;
+    line-height: 1.1;
+    margin-bottom: 20px;
+    max-width: 80%;
+  }
+
+  .title-card .subheading {
+    color: #4fc3f7;
+    font-size: 32px;
+    font-weight: 400;
+    text-align: center;
+    max-width: 70%;
+    line-height: 1.3;
+  }
+
+  .title-card .divider {
+    width: 120px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #4fc3f7, transparent);
+    margin: 24px 0;
+  }
+
+  @keyframes cardFadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+</style>
+
+<div class="title-card">
+  <img class="card-logo" data-placeholder="logo" data-hide-empty src="{{logo}}" alt="">
+  <div class="heading" data-placeholder="heading" data-hide-empty>{{heading}}</div>
+  <div class="divider"></div>
+  <div class="subheading" data-placeholder="subheading" data-hide-empty>{{subheading}}</div>
+</div>

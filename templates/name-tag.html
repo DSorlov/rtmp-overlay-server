@@ -1,0 +1,65 @@
+<!--
+  Name Tag Overlay Template
+  Placeholders: {{name}}, {{title}}, {{logo}}
+  Compact name badge in the bottom-right corner. Great for identifying speakers.
+  Elements hide automatically when their placeholder value is empty.
+-->
+<style>
+  .name-tag {
+    position: absolute;
+    bottom: 60px;
+    right: 60px;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(0, 0, 0, 0.85);
+    border-radius: 8px;
+    padding: 14px 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: slideLeft 0.5s ease-out;
+  }
+
+  .name-tag .tag-logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #4fc3f7;
+    flex-shrink: 0;
+  }
+
+  .name-tag .tag-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .name-tag .tag-name {
+    color: #ffffff;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  .name-tag .tag-title {
+    color: #4fc3f7;
+    font-size: 16px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  @keyframes slideLeft {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+</style>
+
+<div class="name-tag" data-hide-when-children-empty>
+  <img class="tag-logo" data-placeholder="logo" data-hide-empty src="{{logo}}" alt="">
+  <div class="tag-info">
+    <div class="tag-name" data-placeholder="name" data-hide-empty>{{name}}</div>
+    <div class="tag-title" data-placeholder="title" data-hide-empty>{{title}}</div>
+  </div>
+</div>

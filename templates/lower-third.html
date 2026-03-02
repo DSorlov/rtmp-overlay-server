@@ -1,0 +1,68 @@
+<!--
+  Lower Third Overlay Template
+  Placeholders: {{logo}}, {{name}}, {{title}}
+  Shows a logo at the top, and a name/title bar in the lower portion of the screen.
+  Elements hide automatically when their placeholder value is empty.
+-->
+<style>
+  .logo-wrap {
+    position: absolute;
+    top: 40px;
+    left: 60px;
+  }
+
+  .logo-wrap img {
+    max-height: 120px;
+    max-width: 300px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+  }
+
+  .lower-third {
+    position: absolute;
+    bottom: 80px;
+    left: 60px;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    animation: slideIn 0.5s ease-out;
+  }
+
+  .lower-third .name-bar {
+    background: rgba(0, 0, 0, 0.85);
+    color: #ffffff;
+    padding: 12px 32px;
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border-left: 5px solid #4fc3f7;
+    margin-bottom: 4px;
+  }
+
+  .lower-third .title-bar {
+    background: rgba(79, 195, 247, 0.9);
+    color: #000000;
+    padding: 8px 32px;
+    font-size: 24px;
+    font-weight: 500;
+    margin-left: 5px;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+</style>
+
+<div class="logo-wrap">
+  <img data-placeholder="logo" data-hide-empty src="{{logo}}" alt="">
+</div>
+
+<div class="lower-third" data-hide-when-children-empty>
+  <div class="name-bar" data-placeholder="name" data-hide-empty>{{name}}</div>
+  <div class="title-bar" data-placeholder="title" data-hide-empty>{{title}}</div>
+</div>

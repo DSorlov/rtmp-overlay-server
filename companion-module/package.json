@@ -1,0 +1,29 @@
+{
+  "name": "companion-module-rtmp-overlay-server",
+  "version": "1.0.0",
+  "description": "Bitfocus Companion module for RTMP Overlay Server",
+  "main": "dist/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc && companion-module-build && npm run copy-output",
+    "copy-output": "node -e \"const fs=require('fs'),p=require('path');const src=fs.readdirSync('.').find(f=>f.endsWith('.tgz'));if(src){const dest=p.join('..','release');fs.mkdirSync(dest,{recursive:true});fs.copyFileSync(src,p.join(dest,src));fs.unlinkSync(src);console.log('Copied',src,'to release/')}\"",
+    "dev": "tsc && companion-module-build --dev",
+    "lint": "tsc --noEmit"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/companion-module-rtmp-overlay-server"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@companion-module/base": "~1.14.1"
+  },
+  "devDependencies": {
+    "@companion-module/tools": "^2.7.1",
+    "@types/node": "^18.19.0",
+    "typescript": "^5.5.0"
+  }
+}

@@ -1,0 +1,88 @@
+<!--
+  Scoreboard Overlay Template
+  Placeholders: {{teamA}}, {{teamB}}, {{scoreA}}, {{scoreB}}, {{time}}
+  Sports-style scoreboard displayed at the top of the screen.
+-->
+<style>
+  .scoreboard {
+    position: absolute;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: stretch;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  .team {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 24px;
+    min-width: 200px;
+  }
+
+  .team-a {
+    background: rgba(33, 33, 33, 0.92);
+    border-left: 4px solid #ef5350;
+  }
+
+  .team-b {
+    background: rgba(33, 33, 33, 0.92);
+    border-right: 4px solid #42a5f5;
+  }
+
+  .team-name {
+    color: #ffffff;
+    font-size: 28px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  .score {
+    color: #ffffff;
+    font-size: 40px;
+    font-weight: 800;
+    min-width: 50px;
+    text-align: center;
+  }
+
+  .score-a { color: #ef5350; }
+  .score-b { color: #42a5f5; }
+
+  .divider {
+    background: rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    font-size: 18px;
+    color: #ffffff;
+    font-weight: 600;
+    font-family: monospace;
+    min-width: 80px;
+    background: rgba(50, 50, 50, 0.95);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+</style>
+
+<div class="scoreboard">
+  <div class="team team-a">
+    <span class="team-name" data-placeholder="teamA">{{teamA}}</span>
+    <span class="score score-a" data-placeholder="scoreA">{{scoreA}}</span>
+  </div>
+  <div class="divider">
+    <span data-placeholder="time">{{time}}</span>
+  </div>
+  <div class="team team-b">
+    <span class="score score-b" data-placeholder="scoreB">{{scoreB}}</span>
+    <span class="team-name" data-placeholder="teamB">{{teamB}}</span>
+  </div>
+</div>

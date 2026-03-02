@@ -1,0 +1,25 @@
+{
+	"id": "rtmp-overlay-server",
+	"name": "RTMP Overlay Server Module",
+	"shortname": "overlay-server",
+	"description": "Control RTMP Overlay Server",
+	"version": "1.0.0",
+	"license": "MIT",
+	"repository": "https://github.com/user/companion-module-rtmp-overlay-server",
+	"bugs": "https://github.com/user/companion-module-rtmp-overlay-server/issues",
+	"maintainers": [
+		{
+			"name": "Daniel Sörlöv"
+		}
+	],
+	"legacyIds": [],
+	"runtime": {
+		"type": "node18",
+		"api": "nodejs-ipc",
+		"apiVersion": "1.14.1",
+		"entrypoint": "../main.js"
+	},
+	"manufacturer": "Generic",
+	"products": ["RTMP Overlay Server"],
+	"keywords": ["rtmp", "overlay", "stream", "template", "greenscreen"]
+}

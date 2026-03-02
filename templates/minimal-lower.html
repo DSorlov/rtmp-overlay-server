@@ -1,0 +1,49 @@
+<!--
+  Minimal Lower Third Overlay Template
+  Placeholders: {{name}}, {{title}}
+  Clean, minimal lower third with a subtle line accent. No heavy bars.
+  Elements hide automatically when their placeholder value is empty.
+-->
+<style>
+  .minimal-lower {
+    position: absolute;
+    bottom: 80px;
+    left: 80px;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    animation: minFadeUp 0.5s ease-out;
+  }
+
+  .minimal-lower .accent-line {
+    width: 50px;
+    height: 3px;
+    background: #4fc3f7;
+    margin-bottom: 10px;
+  }
+
+  .minimal-lower .min-name {
+    color: #ffffff;
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+    margin-bottom: 4px;
+  }
+
+  .minimal-lower .min-title {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 20px;
+    font-weight: 400;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+  }
+
+  @keyframes minFadeUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+</style>
+
+<div class="minimal-lower" data-hide-when-children-empty>
+  <div class="accent-line"></div>
+  <div class="min-name" data-placeholder="name" data-hide-empty>{{name}}</div>
+  <div class="min-title" data-placeholder="title" data-hide-empty>{{title}}</div>
+</div>

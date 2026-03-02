@@ -1,0 +1,19 @@
+{
+  "apiPort": 3000,
+  "rtmpPort": 1935,
+  "streams": [
+    {
+      "id": 1,
+      "streamName": "overlay1",
+      "defaultTemplate": "lower-third.html",
+      "enabled": true
+    }
+  ],
+  "resolution": {
+    "width": 1920,
+    "height": 1080
+  },
+  "frameRate": 30,
+  "ffmpegPath": "/opt/homebrew/bin/ffmpeg",
+  "chromaKeyColor": "#00FF00"
+}

@@ -1,0 +1,115 @@
+{
+  "name": "rtmp-overlay-server",
+  "version": "1.0.0",
+  "description": "RTMP Overlay server for adding dynamic overlays to RTMP streams using templates and Companion integration",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "build": "tsc",
+    "build:companion": "cd companion-module && npm run build",
+    "start": "npm run build && electron .",
+    "dev": "tsc && electron .",
+    "package": "npm run build && npm run build:companion && electron-builder",
+    "package:win": "npm run build && npm run build:companion && electron-builder --win",
+    "package:mac": "npm run build && npm run build:companion && electron-builder --mac",
+    "package:portable": "npm run build && npm run build:companion && electron-builder --win portable"
+  },
+  "author": "Daniel Sörlöv",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.0",
+    "@fastify/static": "^8.0.0",
+    "fastify": "^5.0.0",
+    "node-media-server": "^2.7.4"
+  },
+  "build": {
+    "appId": "com.rtmp-overlay-server.app",
+    "productName": "RTMP Overlay Server",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "src/overlay/**/*",
+      "src/renderer/**/*",
+      "templates/**/*",
+      "config/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "ffmpeg/",
+        "to": "ffmpeg",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "templates/",
+        "to": "templates",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "config/",
+        "to": "config",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "public.app-category.video",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "include": "build/installer.nsh"
+    }
+  }
+}

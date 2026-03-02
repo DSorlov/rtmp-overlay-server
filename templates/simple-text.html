@@ -1,0 +1,46 @@
+<!--
+  Simple Text Overlay Template
+  Placeholders: {{message}}, {{subtitle}}
+  Centered text overlay for announcements, breaks, or simple messages.
+  Elements hide automatically when their placeholder value is empty.
+-->
+<style>
+  .simple-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 40px 60px;
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: fadeIn 0.6s ease-out;
+  }
+
+  .simple-text .message {
+    color: #ffffff;
+    font-size: 64px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 16px;
+  }
+
+  .simple-text .subtitle {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 28px;
+    font-weight: 400;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+</style>
+
+<div class="simple-text" data-hide-when-children-empty>
+  <div class="message" data-placeholder="message" data-hide-empty>{{message}}</div>
+  <div class="subtitle" data-placeholder="subtitle" data-hide-empty>{{subtitle}}</div>
+</div>
