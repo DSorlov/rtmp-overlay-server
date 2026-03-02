@@ -1,5 +1,5 @@
 {
-	"id": "rtmp-overlay-server",
+	"id": "module-rtmp-overlay-server",
 	"name": "RTMP Overlay Server Module",
 	"shortname": "overlay-server",
 	"description": "Control RTMP Overlay Server",

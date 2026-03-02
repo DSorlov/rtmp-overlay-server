@@ -91,6 +91,7 @@
       "gatekeeperAssess": false
     },
     "dmg": {
+      "artifactName": "rtmp-overlay-server-${version}-${arch}.${ext}",
       "contents": [
         {
           "x": 130,
@@ -109,7 +110,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "include": "build/installer.nsh"
+      "include": "build/installer.nsh",
+      "artifactName": "rtmp-overlay-server-${version}.${ext}"
     }
   }
 }
