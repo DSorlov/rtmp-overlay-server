@@ -5,3 +5,4 @@ ffmpeg/*.exe
 *.log
 .DS_Store
 Thumbs.db
+companion-module/pkg/
