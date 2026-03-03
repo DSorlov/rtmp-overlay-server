@@ -1,6 +1,6 @@
 {
   "name": "rtmp-overlay-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "RTMP Overlay server for adding dynamic overlays to RTMP streams using templates and Companion integration",
   "main": "dist/main/index.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "build:companion": "cd companion-module && npm run build",
     "start": "npm run build && electron .",
     "dev": "tsc && electron .",
-    "package": "npm run build && npm run build:companion && electron-builder",
+    "package": "npm run build && npm run build:companion && electron-builder --mac --win",
     "package:win": "npm run build && npm run build:companion && electron-builder --win",
     "package:mac": "npm run build && npm run build:companion && electron-builder --mac",
     "package:portable": "npm run build && npm run build:companion && electron-builder --win portable"
@@ -87,7 +87,6 @@
       ],
       "icon": "assets/icon.png",
       "category": "public.app-category.video",
-      "hardenedRuntime": true,
       "gatekeeperAssess": false
     },
     "dmg": {

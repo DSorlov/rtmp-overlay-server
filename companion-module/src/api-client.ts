@@ -1,5 +1,13 @@
 import http from 'http'
 
+export interface TimerInfo {
+	running: boolean
+	direction: 'up' | 'down'
+	duration: number
+	remaining: number
+	display: string
+}
+
 export interface StreamInfo {
 	id: number
 	status: string
@@ -9,6 +17,13 @@ export interface StreamInfo {
 	placeholderData: Record<string, string>
 	enabled: boolean
 	chromaKeyColor: string
+	backgroundMode: 'chroma' | 'alpha' | 'luma'
+	lumaInverted: boolean
+	audioMode: 'none' | 'template' | 'device'
+	audioDevice: string
+	subtitlesEnabled: boolean
+	subtitleLanguage: string
+	timer: TimerInfo
 	error?: string
 }
 
@@ -109,5 +124,57 @@ export class ApiClient {
 
 	async setChromaColor(id: number, color: string): Promise<any> {
 		return this.request('PUT', `/api/streams/${id}/chroma`, { color })
+	}
+
+	async setBackgroundMode(id: number, mode: 'chroma' | 'alpha' | 'luma'): Promise<any> {
+		return this.request('PUT', `/api/streams/${id}/background-mode`, { mode })
+	}
+
+	async setLumaInverted(id: number, inverted: boolean): Promise<any> {
+		return this.request('PUT', `/api/streams/${id}/luma-inverted`, { inverted })
+	}
+
+	async setAudioMode(id: number, mode: 'none' | 'template' | 'device'): Promise<any> {
+		return this.request('PUT', `/api/streams/${id}/audio-mode`, { mode })
+	}
+
+	async setAudioDevice(id: number, device: string): Promise<any> {
+		return this.request('PUT', `/api/streams/${id}/audio-device`, { device })
+	}
+
+	async setStreamKey(id: number, key: string): Promise<any> {
+		return this.request('PUT', `/api/streams/${id}/stream-key`, { key })
+	}
+
+	async setSubtitlesEnabled(id: number, enabled: boolean): Promise<any> {
+		return this.request('PUT', `/api/streams/${id}/subtitles-enabled`, { enabled })
+	}
+
+	async setSubtitleLanguage(id: number, language: string): Promise<any> {
+		return this.request('PUT', `/api/streams/${id}/subtitle-language`, { language })
+	}
+
+	async executeFunction(id: number, fnName: string, argument?: string): Promise<any> {
+		return this.request('POST', `/api/streams/${id}/execute`, { function: fnName, argument })
+	}
+
+	async setTimerDuration(id: number, seconds: number): Promise<any> {
+		return this.request('PUT', `/api/streams/${id}/timer/duration`, { seconds })
+	}
+
+	async setTimerDirection(id: number, direction: 'up' | 'down'): Promise<any> {
+		return this.request('PUT', `/api/streams/${id}/timer/direction`, { direction })
+	}
+
+	async startTimer(id: number): Promise<any> {
+		return this.request('POST', `/api/streams/${id}/timer/start`)
+	}
+
+	async stopTimer(id: number): Promise<any> {
+		return this.request('POST', `/api/streams/${id}/timer/stop`)
+	}
+
+	async resetTimer(id: number): Promise<any> {
+		return this.request('POST', `/api/streams/${id}/timer/reset`)
 	}
 }

@@ -1,35 +1,131 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import { app } from 'electron';
 
+/**
+ * Describes a bundled template that has been updated and differs from the user's copy.
+ */
+export interface TemplateUpdateInfo {
+  name: string;
+}
+
 export class TemplateManager {
-  private templatesDir: string;
+  /** Bundled (read-only) templates shipped with the app */
+  private bundledDir: string;
+  /** User-writable templates directory in ~/Documents/RTMP Overlay Server/templates */
+  private userDir: string;
 
   constructor() {
+    // Bundled templates location
     if (app.isPackaged) {
-      this.templatesDir = path.join(process.resourcesPath, 'templates');
+      this.bundledDir = path.join(process.resourcesPath, 'templates');
     } else {
-      this.templatesDir = path.join(__dirname, '..', '..', 'templates');
+      this.bundledDir = path.join(__dirname, '..', '..', 'templates');
+    }
+
+    // User templates location: ~/Documents/RTMP Overlay Server/templates
+    const docsDir = app.getPath('documents');
+    this.userDir = path.join(docsDir, 'RTMP Overlay Server', 'templates');
+  }
+
+  /**
+   * Returns the user templates directory path.
+   */
+  getUserTemplatesDir(): string {
+    return this.userDir;
+  }
+
+  /**
+   * Ensure the user templates directory exists.
+   */
+  private ensureUserDir(): void {
+    if (!fs.existsSync(this.userDir)) {
+      fs.mkdirSync(this.userDir, { recursive: true });
+      console.log('[TemplateManager] Created user templates dir:', this.userDir);
     }
   }
 
   /**
-   * List all available template files
+   * Get SHA-256 hash of a file's contents.
+   */
+  private hashFile(filePath: string): string {
+    const content = fs.readFileSync(filePath);
+    return crypto.createHash('sha256').update(content).digest('hex');
+  }
+
+  /**
+   * List all bundled template filenames.
+   */
+  private listBundled(): string[] {
+    if (!fs.existsSync(this.bundledDir)) return [];
+    return fs.readdirSync(this.bundledDir).filter(f => f.endsWith('.html'));
+  }
+
+  /**
+   * Synchronise bundled templates → user directory.
+   *   - New templates (not in user dir) are copied automatically.
+   *   - Updated templates (hash differs) are returned so the caller can prompt the user.
+   *
+   * Returns the list of templates that have newer bundled versions but already exist
+   * (modified or not) in the user directory.
+   */
+  syncTemplates(): TemplateUpdateInfo[] {
+    this.ensureUserDir();
+
+    const bundled = this.listBundled();
+    const updatedTemplates: TemplateUpdateInfo[] = [];
+
+    for (const name of bundled) {
+      const bundledPath = path.join(this.bundledDir, name);
+      const userPath = path.join(this.userDir, name);
+
+      if (!fs.existsSync(userPath)) {
+        // First-time copy — user doesn't have this template yet
+        fs.copyFileSync(bundledPath, userPath);
+        console.log(`[TemplateManager] Copied new template: ${name}`);
+      } else {
+        // Compare hashes
+        const bundledHash = this.hashFile(bundledPath);
+        const userHash = this.hashFile(userPath);
+        if (bundledHash !== userHash) {
+          updatedTemplates.push({ name });
+        }
+      }
+    }
+
+    return updatedTemplates;
+  }
+
+  /**
+   * Overwrite specific user templates with their bundled versions.
+   */
+  applyBundledUpdates(names: string[]): void {
+    for (const name of names) {
+      const bundledPath = path.join(this.bundledDir, name);
+      const userPath = path.join(this.userDir, name);
+      if (fs.existsSync(bundledPath)) {
+        fs.copyFileSync(bundledPath, userPath);
+        console.log(`[TemplateManager] Updated user template: ${name}`);
+      }
+    }
+  }
+
+  /**
+   * List all available template files from the user templates directory.
    */
   listTemplates(): string[] {
-    if (!fs.existsSync(this.templatesDir)) {
-      return [];
-    }
+    this.ensureUserDir();
     return fs
-      .readdirSync(this.templatesDir)
+      .readdirSync(this.userDir)
       .filter((f) => f.endsWith('.html'));
   }
 
   /**
-   * Load a template file's raw HTML content
+   * Load a template file's raw HTML content from the user directory.
    */
   loadTemplate(name: string): string {
-    const filePath = path.join(this.templatesDir, name);
+    const filePath = path.join(this.userDir, name);
 
     if (!fs.existsSync(filePath)) {
       throw new Error(`Template not found: ${name}`);
@@ -141,6 +237,76 @@ ${renderedHtml}
     const container = document.getElementById('overlay-container');
     if (container) { container.innerHTML = html; }
   };
+
+  // ── Subtitle support ──
+  // Creates a subtitle container and exposes window.addSubtitle(text)
+  // that displays classic TV-style captions at the bottom of the overlay.
+  (function() {
+    // Create subtitle container
+    var subContainer = document.createElement('div');
+    subContainer.id = 'subtitle-container';
+    subContainer.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);max-width:80%;text-align:center;z-index:10000;pointer-events:none;';
+    document.body.appendChild(subContainer);
+
+    // Add subtitle CSS
+    var subStyle = document.createElement('style');
+    subStyle.textContent = [
+      '.subtitle-line { display:block; background:rgba(0,0,0,0.75); color:#FFF;',
+      'font-family:Arial,Helvetica Neue,sans-serif; font-size:28px; font-weight:600;',
+      'line-height:1.4; padding:8px 20px; border-radius:4px; margin-bottom:4px;',
+      'text-shadow:1px 1px 2px rgba(0,0,0,0.8); animation:subtitleFadeIn 0.3s ease-out; }',
+      '.subtitle-line.fading { animation:subtitleFadeOut 0.5s ease-in forwards; }',
+      '@keyframes subtitleFadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }',
+      '@keyframes subtitleFadeOut { from{opacity:1} to{opacity:0} }',
+    ].join(' ');
+    document.head.appendChild(subStyle);
+
+    var subtitleTimeout = null;
+    window.addSubtitle = function(text) {
+      if (!text || !text.trim()) return;
+      // Clear previous fade-out timer
+      if (subtitleTimeout) clearTimeout(subtitleTimeout);
+
+      // Create new line
+      var line = document.createElement('div');
+      line.className = 'subtitle-line';
+      line.textContent = text.trim();
+      subContainer.appendChild(line);
+
+      // Keep at most 2 lines
+      while (subContainer.children.length > 2) {
+        subContainer.removeChild(subContainer.firstChild);
+      }
+
+      // Auto-fade after 5 seconds
+      subtitleTimeout = setTimeout(function() {
+        var children = Array.from(subContainer.children);
+        children.forEach(function(el) { el.classList.add('fading'); });
+        setTimeout(function() { subContainer.innerHTML = ''; }, 500);
+      }, 5000);
+    };
+  })();
+
+  // ── Timer support ──
+  // Exposes window.updateTimer(display, running) which pushes the formatted
+  // time string into any element with a data-timer attribute.
+  (function() {
+    window.updateTimer = function(display, running) {
+      var els = document.querySelectorAll('[data-timer]');
+      els.forEach(function(el) {
+        el.textContent = display;
+        // Always show the element when it has content
+        if (display) el.style.display = '';
+        if (running) {
+          el.classList.add('timer-running');
+          el.classList.remove('timer-stopped');
+        } else {
+          el.classList.remove('timer-running');
+          el.classList.add('timer-stopped');
+        }
+      });
+    };
+  })();
 
   // On initial load, hide empty placeholder elements
   (function() {

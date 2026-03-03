@@ -6,6 +6,29 @@
       "id": 1,
       "streamName": "overlay1",
       "defaultTemplate": "lower-third.html",
+      "enabled": true,
+      "backgroundMode": "chroma",
+      "audioMode": "device",
+      "audioDevice": "1",
+      "subtitlesEnabled": false,
+      "subtitleLanguage": "en"
+    },
+    {
+      "id": 2,
+      "streamName": "overlay2",
+      "defaultTemplate": "lower-third.html",
+      "enabled": true
+    },
+    {
+      "id": 3,
+      "streamName": "overlay3",
+      "defaultTemplate": "lower-third.html",
+      "enabled": true
+    },
+    {
+      "id": 4,
+      "streamName": "overlay4",
+      "defaultTemplate": "lower-third.html",
       "enabled": true
     }
   ],
@@ -15,5 +38,5 @@
   },
   "frameRate": 30,
   "ffmpegPath": "/opt/homebrew/bin/ffmpeg",
-  "chromaKeyColor": "#00FF00"
+  "whisperModel": "base"
 }

@@ -1,7 +1,12 @@
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, ipcMain } from 'electron';
 import { EventEmitter } from 'events';
+import * as path from 'path';
+import { app } from 'electron';
 import { TemplateManager } from './template-manager';
 import { Resolution } from './config';
+
+export type BackgroundMode = 'chroma' | 'alpha' | 'luma';
+export type AudioMode = 'none' | 'template' | 'device';
 
 export interface OverlayRendererOptions {
   streamId: number;
@@ -10,6 +15,9 @@ export interface OverlayRendererOptions {
   resolution: Resolution;
   frameRate: number;
   chromaKeyColor?: string;
+  backgroundMode?: BackgroundMode;
+  lumaInverted?: boolean;
+  audioMode?: AudioMode;
 }
 
 /**
@@ -24,6 +32,7 @@ export class OverlayRenderer extends EventEmitter {
   private _currentData: Record<string, string>;
   private _isRunning: boolean = false;
   private repaintTimer: NodeJS.Timeout | null = null;
+  private audioHandler: ((_event: any, data: Buffer) => void) | null = null;
 
   constructor(templateManager: TemplateManager, options: OverlayRendererOptions) {
     super();
@@ -52,6 +61,12 @@ export class OverlayRenderer extends EventEmitter {
     if (this._isRunning) return;
 
     const { width, height } = this.options.resolution;
+    const useTemplateAudio = this.options.audioMode === 'template';
+
+    // Resolve preload for template audio capture
+    const preloadPath = useTemplateAudio
+      ? path.join(app.getAppPath(), 'src', 'main', 'overlay-preload.js')
+      : undefined;
 
     this.window = new BrowserWindow({
       width,
@@ -62,6 +77,7 @@ export class OverlayRenderer extends EventEmitter {
         backgroundThrottling: false,
         contextIsolation: false,
         nodeIntegration: false,
+        ...(preloadPath ? { preload: preloadPath } : {}),
       },
     });
 
@@ -94,6 +110,14 @@ export class OverlayRenderer extends EventEmitter {
     // Explicitly start painting (required on some platforms / Electron versions)
     this.window.webContents.startPainting();
 
+    // Listen for audio PCM data from the overlay preload script (template audio mode)
+    if (useTemplateAudio) {
+      this.audioHandler = (_event: any, data: Buffer) => {
+        this.emit('audio', data);
+      };
+      this.window.webContents.ipc.on('overlay-audio-data', this.audioHandler);
+    }
+
     // Force continuous repainting: off-screen rendering only fires 'paint'
     // events when content changes. For static overlays the paint events stop
     // after the initial render. Calling invalidate() on a timer forces a
@@ -120,6 +144,12 @@ export class OverlayRenderer extends EventEmitter {
     if (this.repaintTimer) {
       clearInterval(this.repaintTimer);
       this.repaintTimer = null;
+    }
+
+    // Clean up audio IPC listener
+    if (this.audioHandler && this.window && !this.window.isDestroyed()) {
+      this.window.webContents.ipc.removeListener('overlay-audio-data', this.audioHandler);
+      this.audioHandler = null;
     }
 
     if (this.window && !this.window.isDestroyed()) {
@@ -171,6 +201,69 @@ export class OverlayRenderer extends EventEmitter {
   }
 
   /**
+   * Display a subtitle line in the overlay via the injected addSubtitle() function.
+   */
+  async showSubtitle(text: string): Promise<void> {
+    if (!this._isRunning || !this.window || this.window.isDestroyed()) return;
+    try {
+      const escaped = JSON.stringify(text);
+      await this.window.webContents.executeJavaScript(
+        `if (window.addSubtitle) { window.addSubtitle(${escaped}); }`
+      );
+    } catch {
+      // ignore — window may have been destroyed
+    }
+  }
+
+  /**
+   * Push timer display text into the overlay via the injected updateTimer() function.
+   */
+  async updateTimer(display: string, running: boolean): Promise<void> {
+    if (!this._isRunning || !this.window || this.window.isDestroyed()) return;
+    try {
+      const escaped = JSON.stringify(display);
+      await this.window.webContents.executeJavaScript(
+        `if (window.updateTimer) { window.updateTimer(${escaped}, ${running}); }`
+      );
+    } catch {
+      // ignore — window may have been destroyed
+    }
+  }
+
+  /**
+   * Call a global JavaScript function in the template by name,
+   * passing an optional argument (string or JSON-serialised data).
+   * Returns a structured result: { found, result?, error? }.
+   */
+  async executeFunction(name: string, arg?: string): Promise<{ found: boolean; result?: any; error?: string }> {
+    if (!this._isRunning || !this.window || this.window.isDestroyed()) {
+      return { found: false, error: 'Stream is not running' };
+    }
+    try {
+      const escapedName = JSON.stringify(name);
+      const escapedArg = JSON.stringify(arg ?? '');
+      return await this.window.webContents.executeJavaScript(
+        `(function() {
+           var fn = window[${escapedName}];
+           if (typeof fn !== 'function') {
+             return { found: false, error: 'Function "' + ${escapedName} + '" not found on window' };
+           }
+           try {
+             var a = ${escapedArg};
+             try { a = JSON.parse(a); } catch(_) {}
+             var r = fn(a);
+             return { found: true, result: r };
+           } catch(e) {
+             return { found: true, error: String(e) };
+           }
+         })()`
+      );
+    } catch (err: any) {
+      return { found: false, error: err.message || 'Unknown error' };
+    }
+  }
+
+  /**
    * Capture a single frame as a PNG buffer (for GUI thumbnails)
    */
   async captureFrame(): Promise<Buffer | null> {
@@ -198,7 +291,9 @@ export class OverlayRenderer extends EventEmitter {
       this._currentData,
       width,
       height,
-      this.options.chromaKeyColor,
+      this.options.backgroundMode === 'alpha' ? 'transparent'
+        : this.options.backgroundMode === 'luma' ? (this.options.lumaInverted ? '#FFFFFF' : '#000000')
+        : (this.options.chromaKeyColor || '#00FF00'),
     );
 
     // Load HTML as a data URL

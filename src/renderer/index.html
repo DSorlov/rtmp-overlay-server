@@ -196,7 +196,19 @@
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
+  .section-head:hover { color: var(--text-primary); }
+  .section-head .collapse-arrow {
+    font-size: 10px;
+    transition: transform 0.15s ease;
+  }
+  .sidebar-section.collapsed .collapse-arrow { transform: rotate(-90deg); }
+  .sidebar-section.collapsed > .section-body { display: none; }
 
   .section-body {
     padding: 10px 12px;
@@ -294,10 +306,53 @@
     flex: 1;
     overflow-y: auto;
     padding: 16px 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    align-content: start;
+  }
+  .settings-body .full-width {
+    grid-column: 1 / -1;
+  }
+  .settings-section {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: rgba(255,255,255,.02);
+    overflow: hidden;
+  }
+  .settings-section-header {
+    padding: 8px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-primary);
+    background: rgba(255,255,255,.04);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+  }
+  .settings-section-header:hover {
+    background: rgba(255,255,255,.07);
+  }
+  .settings-section-header .collapse-arrow {
+    font-size: 10px;
+    transition: transform .15s;
+  }
+  .settings-section.collapsed .collapse-arrow {
+    transform: rotate(-90deg);
+  }
+  .settings-section.collapsed .settings-section-body {
+    display: none;
+  }
+  .settings-section-body {
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    max-width: 600px;
+    gap: 10px;
   }
   .settings-group {
     display: flex;
@@ -395,6 +450,70 @@
     color: var(--accent);
     border-color: var(--accent);
   }
+
+  /* ── Background mode toggle ──────────── */
+  .mode-toggle {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .mode-toggle button {
+    flex: 1;
+    padding: 5px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .mode-toggle button.active {
+    background: var(--accent);
+    color: #000;
+  }
+  .mode-toggle button:not(.active):hover {
+    background: rgba(255,255,255,.06);
+    color: var(--text-primary);
+  }
+  .alpha-info, .luma-info {
+    font-size: 10px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    padding: 2px 0;
+  }
+  .audio-info {
+    font-size: 10px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    padding: 2px 0;
+  }
+  .fn-result {
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-family: monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+  .fn-result.ok { color: var(--accent); }
+  .fn-result.err { color: #e57373; }
+  #fn-arg textarea, textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 4px;
+    color: var(--text-primary);
+    padding: 6px 8px;
+  }
+
   .color-hex {
     font-size: 11px;
     font-family: monospace;
@@ -405,12 +524,6 @@
     padding: 4px 8px;
     width: 80px;
     text-transform: uppercase;
-  }
-  .stream-keys-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding-left: 4px;
   }
   .settings-actions {
     display: flex;
@@ -441,6 +554,156 @@
   /* ── Settings tab icon ───────────────── */
   .tab-bar .tab-spacer { flex: 1; }
   .tab-btn .tab-icon { font-size: 16px; line-height: 1; }
+
+  /* ── Whisper model cards ─────────────── */
+  .whisper-model-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: rgba(255,255,255,.03);
+  }
+  .whisper-model-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .whisper-model-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .whisper-model-badge {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .whisper-model-badge.active {
+    background: var(--accent);
+    color: #000;
+  }
+  .whisper-model-badge.downloaded {
+    background: rgba(76,175,80,.2);
+    color: #4caf50;
+  }
+  .whisper-model-badge.not-downloaded {
+    background: rgba(255,255,255,.06);
+    color: var(--text-secondary);
+  }
+  .whisper-model-actions {
+    display: flex;
+    gap: 4px;
+  }
+  .whisper-model-actions button {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .whisper-model-actions button:hover {
+    color: var(--text-primary);
+    border-color: var(--accent);
+  }
+  .whisper-model-actions button.btn-use {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  .whisper-model-actions button.btn-use:hover {
+    filter: brightness(1.15);
+  }
+  .whisper-model-actions button.btn-delete {
+    color: var(--error);
+    border-color: var(--error);
+  }
+  .whisper-model-actions button.btn-delete:hover {
+    background: rgba(239,83,80,.15);
+  }
+  .whisper-model-actions button:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+  }
+
+  /* ── Model picker modal ──────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999;
+  }
+  .modal-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    min-width: 340px;
+    max-width: 420px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  }
+  .modal-box h3 {
+    margin: 0 0 4px;
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+  .modal-box p {
+    margin: 0 0 14px;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .modal-model-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+  .modal-model-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: rgba(255,255,255,.03);
+    color: var(--text-primary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .modal-model-btn:hover {
+    background: rgba(255,255,255,.08);
+    border-color: var(--accent);
+  }
+  .modal-model-btn .model-size {
+    font-weight: 400;
+    color: var(--text-secondary);
+    font-size: 10px;
+  }
+  .modal-cancel {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .modal-cancel:hover {
+    color: var(--text-primary);
+    border-color: var(--text-primary);
+  }
 </style>
 </head>
 <body>
@@ -465,8 +728,15 @@ let initReceived = false;
 let activeTab = null;
 let currentApiPort = 3000;
 let currentRtmpPort = 1935;
-let currentChromaKeyColor = '#00FF00';
+let currentResolution = { width: 1920, height: 1080 };
+let currentFrameRate = 30;
+let currentEncoding = {
+  preset: 'ultrafast', profile: 'baseline', level: '4.0', tune: 'zerolatency',
+  videoBitrate: 4000, maxBitrate: 4500, bufferSize: 8000, gopSize: 0,
+  audioBitrate: 128, pixelFormat: 'yuv420p',
+};
 let hostIP = '';
+let whisperModels = [];
 
 // ── debounce helper ───────────────────────
 function debounce(fn, ms) {
@@ -483,8 +753,11 @@ if (api) {
     templatePlaceholders = data.templatePlaceholders || {};
     currentApiPort = data.apiPort;
     currentRtmpPort = data.rtmpPort;
-    currentChromaKeyColor = data.chromaKeyColor || '#00FF00';
+    currentResolution = data.resolution || { width: 1920, height: 1080 };
+    currentFrameRate = data.frameRate || 30;
+    currentEncoding = data.encoding || currentEncoding;
     hostIP = data.hostIP || '';
+    whisperModels = data.whisperModels || [];
     document.getElementById('api-url').textContent = `:${data.apiPort}`;
     document.getElementById('rtmp-info').textContent = `:${data.rtmpPort}`;
     // Preserve settings tab if it was active; otherwise pick first stream
@@ -496,9 +769,36 @@ if (api) {
 
   api.on('stream-update', (state) => {
     const idx = streams.findIndex(s => s.id === state.id);
+    const prev = idx !== -1 ? streams[idx] : null;
     if (idx !== -1) streams[idx] = state;
     patchTab(state.id);
-    if (state.id === activeTab && activeTab !== 'settings') patchActiveView();
+    if (state.id === activeTab && activeTab !== 'settings') {
+      // If background mode, luma invert, audio mode, or stream name changed, rebuild the whole view
+      if (prev && (prev.backgroundMode !== state.backgroundMode || prev.lumaInverted !== state.lumaInverted || prev.audioMode !== state.audioMode || prev.audioDevice !== state.audioDevice || prev.streamName !== state.streamName || prev.subtitlesEnabled !== state.subtitlesEnabled || prev.subtitleLanguage !== state.subtitleLanguage || (prev.timer && state.timer && prev.timer.direction !== state.timer.direction))) {
+        buildPreviewArea(state);
+        buildSidebar(state);
+      } else if (prev && state.timer && prev.timer && (prev.timer.display !== state.timer.display || prev.timer.running !== state.timer.running)) {
+        // Lightweight timer patch — avoid full sidebar rebuild every second
+        const td = document.getElementById('timer-display-' + state.id);
+        if (td) {
+          td.textContent = state.timer.display;
+          td.style.color = state.timer.running ? '#4ade80' : '#e0e0e0';
+        }
+        // Also patch Start/Stop button states
+        const startBtn = document.getElementById('timer-start-' + state.id);
+        const stopBtn = document.getElementById('timer-stop-' + state.id);
+        if (startBtn) {
+          startBtn.textContent = state.timer.running ? '▶ Running' : '▶ Start';
+          startBtn.disabled = state.timer.running;
+        }
+        if (stopBtn) {
+          stopBtn.disabled = !state.timer.running;
+        }
+        patchActiveView();
+      } else {
+        patchActiveView();
+      }
+    }
   });
 
   api.on('preview-frame', ({ streamId, dataUrl }) => {
@@ -518,6 +818,15 @@ if (api) {
 
   api.on('templates-updated', (t) => { templates = t; buildUI(); });
 
+  api.on('audio-devices', (devices) => {
+    window._audioDevices = devices;
+    // Refresh audio device dropdown if visible
+    if (activeTab !== null && activeTab !== 'settings') {
+      const s = streams.find(st => st.id === activeTab);
+      if (s && s.audioMode === 'device') buildSidebar(s);
+    }
+  });
+
   api.on('rtmp-stats', (stats) => {
     rtmpStats = stats;
     if (activeTab !== null && activeTab !== 'settings') patchActiveView();
@@ -535,6 +844,36 @@ if (api) {
     }
     const btn = document.getElementById('settings-save-btn');
     if (btn) btn.disabled = false;
+  });
+
+  api.on('whisper-status', (models) => {
+    whisperModels = models;
+    const container = document.getElementById('whisper-models-container');
+    if (container) renderWhisperModels(container);
+  });
+
+  api.on('whisper-model-needed', ({ streamId }) => {
+    showModelPickerDialog(streamId);
+  });
+
+  api.on('function-result', ({ streamId, functionName, found, result, error }) => {
+    const el = document.getElementById(`fn-result-${streamId}`);
+    if (!el) return;
+    if (!found) {
+      el.textContent = error || `"${functionName}" not found`;
+      el.className = 'fn-result err';
+    } else if (error) {
+      el.textContent = `Error: ${error}`;
+      el.className = 'fn-result err';
+    } else if (result === undefined || result === null) {
+      el.textContent = `✓ ${functionName}()`;
+      el.className = 'fn-result ok';
+    } else {
+      try {
+        el.textContent = `→ ${typeof result === 'object' ? JSON.stringify(result) : String(result)}`;
+      } catch { el.textContent = `→ ${String(result)}`; }
+      el.className = 'fn-result ok';
+    }
   });
 } else {
   document.getElementById('app').innerHTML =
@@ -656,22 +995,45 @@ function buildPreviewArea(s) {
 }
 
 // ── Sidebar ───────────────────────────────
+// Track collapsed state across rebuilds
+const collapsedSections = {};
+
+function makeSection(id, title, startCollapsed) {
+  const section = document.createElement('div');
+  section.className = 'sidebar-section';
+  section.id = id;
+  if (collapsedSections[id] ?? startCollapsed) section.classList.add('collapsed');
+
+  const head = document.createElement('div');
+  head.className = 'section-head';
+  const label = document.createElement('span');
+  label.textContent = title;
+  const arrow = document.createElement('span');
+  arrow.className = 'collapse-arrow';
+  arrow.textContent = '▼';
+  head.appendChild(label);
+  head.appendChild(arrow);
+  head.addEventListener('click', () => {
+    section.classList.toggle('collapsed');
+    collapsedSections[id] = section.classList.contains('collapsed');
+  });
+  section.appendChild(head);
+
+  const body = document.createElement('div');
+  body.className = 'section-body';
+  section.appendChild(body);
+  return { section, body };
+}
+
 function buildSidebar(s) {
   const sidebar = document.getElementById('sidebar');
   sidebar.innerHTML = '';
 
-  // ─ Control section ─
-  const ctrlSection = document.createElement('div');
-  ctrlSection.className = 'sidebar-section';
+  const bgMode = s.backgroundMode || 'chroma';
 
-  const ctrlHead = document.createElement('div');
-  ctrlHead.className = 'section-head';
-  ctrlHead.textContent = 'Control';
-  ctrlSection.appendChild(ctrlHead);
-
-  const ctrlBody = document.createElement('div');
-  ctrlBody.className = 'section-body';
-  ctrlBody.id = 'ctrl-body';
+  // ─ CONTROL section ─
+  const ctrl = makeSection('sec-control', 'Control', false);
+  ctrl.body.id = 'ctrl-body';
 
   // Error
   if (s.error) {
@@ -679,7 +1041,7 @@ function buildSidebar(s) {
     e.className = 'err-msg';
     e.id = 'err-msg';
     e.textContent = s.error;
-    ctrlBody.appendChild(e);
+    ctrl.body.appendChild(e);
   }
 
   // Status row
@@ -687,72 +1049,7 @@ function buildSidebar(s) {
   statusRow.className = 'status-row';
   statusRow.id = 'status-row';
   statusRow.innerHTML = `<span class="dot ${s.status}"></span><span class="status-label ${s.status}">${s.status}</span>`;
-  ctrlBody.appendChild(statusRow);
-
-  // Template
-  const tplField = document.createElement('div');
-  tplField.className = 'field';
-  const tplLabel = document.createElement('label');
-  tplLabel.textContent = 'Template';
-  const sel = document.createElement('select');
-  sel.id = `tpl-${s.id}`;
-  for (const t of templates) {
-    const opt = document.createElement('option');
-    opt.value = t;
-    opt.textContent = t.replace(/\.html$/, '');
-    if (t === s.currentTemplate) opt.selected = true;
-    sel.appendChild(opt);
-  }
-  sel.addEventListener('change', () => onTemplateChange(s.id));
-  tplField.appendChild(tplLabel);
-  tplField.appendChild(sel);
-  ctrlBody.appendChild(tplField);
-
-  // Chroma key color
-  const chromaRow = document.createElement('div');
-  chromaRow.className = 'chroma-row';
-  chromaRow.id = 'chroma-row';
-  const chromaLabel = document.createElement('label');
-  chromaLabel.textContent = 'Chroma';
-  const chromaPicker = document.createElement('input');
-  chromaPicker.type = 'color';
-  chromaPicker.id = `chroma-${s.id}`;
-  chromaPicker.value = s.chromaKeyColor || currentChromaKeyColor;
-  const chromaHex = document.createElement('input');
-  chromaHex.type = 'text';
-  chromaHex.className = 'color-hex';
-  chromaHex.id = `chroma-hex-${s.id}`;
-  chromaHex.value = (s.chromaKeyColor || currentChromaKeyColor).toUpperCase();
-  chromaHex.maxLength = 7;
-  const chromaReset = document.createElement('button');
-  chromaReset.className = 'chroma-reset';
-  chromaReset.textContent = 'Default';
-  chromaReset.title = 'Reset to global default (' + currentChromaKeyColor + ')';
-  chromaPicker.addEventListener('change', () => {
-    chromaHex.value = chromaPicker.value.toUpperCase();
-    api.send('stream-action', { action: 'set-chroma', streamId: s.id, color: chromaPicker.value });
-  });
-  chromaHex.addEventListener('change', () => {
-    let v = chromaHex.value.trim();
-    if (!v.startsWith('#')) v = '#' + v;
-    if (/^#[0-9A-Fa-f]{6}$/.test(v)) {
-      chromaPicker.value = v;
-      chromaHex.value = v.toUpperCase();
-      api.send('stream-action', { action: 'set-chroma', streamId: s.id, color: v });
-    } else {
-      chromaHex.value = chromaPicker.value.toUpperCase();
-    }
-  });
-  chromaReset.addEventListener('click', () => {
-    chromaPicker.value = currentChromaKeyColor;
-    chromaHex.value = currentChromaKeyColor.toUpperCase();
-    api.send('stream-action', { action: 'set-chroma', streamId: s.id, color: '' });
-  });
-  chromaRow.appendChild(chromaLabel);
-  chromaRow.appendChild(chromaPicker);
-  chromaRow.appendChild(chromaHex);
-  chromaRow.appendChild(chromaReset);
-  ctrlBody.appendChild(chromaRow);
+  ctrl.body.appendChild(statusRow);
 
   // Action button
   const actionWrap = document.createElement('div');
@@ -769,27 +1066,658 @@ function buildSidebar(s) {
     btn.onclick = () => api.send('stream-action', { action: 'start', streamId: s.id });
   }
   actionWrap.appendChild(btn);
-  ctrlBody.appendChild(actionWrap);
+  ctrl.body.appendChild(actionWrap);
 
-  ctrlSection.appendChild(ctrlBody);
-  sidebar.appendChild(ctrlSection);
+  // Stream key
+  const keyField = document.createElement('div');
+  keyField.className = 'field';
+  const keyLabel = document.createElement('label');
+  keyLabel.textContent = 'Stream Key';
+  const keyInp = document.createElement('input');
+  keyInp.type = 'text';
+  keyInp.id = `stream-key-${s.id}`;
+  keyInp.value = s.streamName || '';
+  keyInp.placeholder = `overlay${s.id}`;
+  keyInp.addEventListener('change', () => {
+    const val = keyInp.value.trim();
+    if (!val) { keyInp.value = s.streamName; return; }
+    if (streams.some(st => st.id !== s.id && st.streamName === val)) {
+      alert('Stream key must be unique.');
+      keyInp.value = s.streamName;
+      return;
+    }
+    api.send('stream-action', { action: 'set-stream-key', streamId: s.id, key: val });
+  });
+  keyField.appendChild(keyLabel);
+  keyField.appendChild(keyInp);
+  ctrl.body.appendChild(keyField);
 
-  // ─ Configuration section ─
-  const cfgSection = document.createElement('div');
-  cfgSection.className = 'sidebar-section';
+  sidebar.appendChild(ctrl.section);
 
-  const cfgHead = document.createElement('div');
-  cfgHead.className = 'section-head';
-  cfgHead.textContent = 'Configuration';
-  cfgSection.appendChild(cfgHead);
+  // ─ TEMPLATE section ─
+  const tpl = makeSection('sec-template', 'Template', true);
 
-  const cfgBody = document.createElement('div');
-  cfgBody.className = 'section-body';
-  cfgBody.id = 'ph-wrap';
-  fillPlaceholderFields(cfgBody, s);
+  const tplField = document.createElement('div');
+  tplField.className = 'field';
+  const tplLabel = document.createElement('label');
+  tplLabel.textContent = 'Template';
+  const sel = document.createElement('select');
+  sel.id = `tpl-${s.id}`;
+  for (const t of templates) {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t.replace(/\.html$/, '');
+    if (t === s.currentTemplate) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  sel.addEventListener('change', () => onTemplateChange(s.id));
+  tplField.appendChild(tplLabel);
+  tplField.appendChild(sel);
+  tpl.body.appendChild(tplField);
 
-  cfgSection.appendChild(cfgBody);
-  sidebar.appendChild(cfgSection);
+  sidebar.appendChild(tpl.section);
+
+  // ─ BACKGROUND section (unified: mode selector + mode-specific settings) ─
+  const bg = makeSection('sec-background', 'Background', true);
+
+  // Mode selector
+  const modeField = document.createElement('div');
+  modeField.className = 'field';
+  const modeLabel = document.createElement('label');
+  modeLabel.textContent = 'Mode';
+  const modeToggle = document.createElement('div');
+  modeToggle.className = 'mode-toggle';
+  modeToggle.id = 'mode-toggle';
+  const chromaBtn = document.createElement('button');
+  chromaBtn.textContent = 'Chroma';
+  chromaBtn.className = bgMode === 'chroma' ? 'active' : '';
+  const alphaBtn = document.createElement('button');
+  alphaBtn.textContent = 'Alpha';
+  alphaBtn.className = bgMode === 'alpha' ? 'active' : '';
+  const lumaBtn = document.createElement('button');
+  lumaBtn.textContent = 'Luma';
+  lumaBtn.className = bgMode === 'luma' ? 'active' : '';
+  chromaBtn.addEventListener('click', () => {
+    if (bgMode === 'chroma') return;
+    api.send('stream-action', { action: 'set-background-mode', streamId: s.id, mode: 'chroma' });
+  });
+  alphaBtn.addEventListener('click', () => {
+    if (bgMode === 'alpha') return;
+    api.send('stream-action', { action: 'set-background-mode', streamId: s.id, mode: 'alpha' });
+  });
+  lumaBtn.addEventListener('click', () => {
+    if (bgMode === 'luma') return;
+    api.send('stream-action', { action: 'set-background-mode', streamId: s.id, mode: 'luma' });
+  });
+  modeToggle.appendChild(chromaBtn);
+  modeToggle.appendChild(alphaBtn);
+  modeToggle.appendChild(lumaBtn);
+  modeField.appendChild(modeLabel);
+  modeField.appendChild(modeToggle);
+  bg.body.appendChild(modeField);
+
+  // Mode-specific settings
+  if (bgMode === 'chroma') {
+    const chromaRow = document.createElement('div');
+    chromaRow.className = 'chroma-row';
+    chromaRow.id = 'chroma-row';
+    const chromaLabel = document.createElement('label');
+    chromaLabel.textContent = 'Color';
+    const chromaPicker = document.createElement('input');
+    chromaPicker.type = 'color';
+    chromaPicker.id = `chroma-${s.id}`;
+    chromaPicker.value = s.chromaKeyColor || '#00FF00';
+    const chromaHex = document.createElement('input');
+    chromaHex.type = 'text';
+    chromaHex.className = 'color-hex';
+    chromaHex.id = `chroma-hex-${s.id}`;
+    chromaHex.value = (s.chromaKeyColor || '#00FF00').toUpperCase();
+    chromaHex.maxLength = 7;
+    const chromaReset = document.createElement('button');
+    chromaReset.className = 'chroma-reset';
+    chromaReset.textContent = 'Default';
+    chromaReset.title = 'Reset to default (#00FF00)';
+    chromaPicker.addEventListener('change', () => {
+      chromaHex.value = chromaPicker.value.toUpperCase();
+      api.send('stream-action', { action: 'set-chroma', streamId: s.id, color: chromaPicker.value });
+    });
+    chromaHex.addEventListener('change', () => {
+      let v = chromaHex.value.trim();
+      if (!v.startsWith('#')) v = '#' + v;
+      if (/^#[0-9A-Fa-f]{6}$/.test(v)) {
+        chromaPicker.value = v;
+        chromaHex.value = v.toUpperCase();
+        api.send('stream-action', { action: 'set-chroma', streamId: s.id, color: v });
+      } else {
+        chromaHex.value = chromaPicker.value.toUpperCase();
+      }
+    });
+    chromaReset.addEventListener('click', () => {
+      chromaPicker.value = '#00FF00';
+      chromaHex.value = '#00FF00';
+      api.send('stream-action', { action: 'set-chroma', streamId: s.id, color: '' });
+    });
+    chromaRow.appendChild(chromaLabel);
+    chromaRow.appendChild(chromaPicker);
+    chromaRow.appendChild(chromaHex);
+    chromaRow.appendChild(chromaReset);
+    bg.body.appendChild(chromaRow);
+  } else if (bgMode === 'alpha') {
+    const info = document.createElement('div');
+    info.className = 'alpha-info';
+    info.innerHTML = 'Output uses <strong>stacked alpha</strong> format — the top half is RGB and the bottom half is the alpha mask.<br><br>In OBS, use an <em>Image Mask/Blend</em> filter or a plugin that supports alpha-packed video to decode transparency.';
+    bg.body.appendChild(info);
+  } else if (bgMode === 'luma') {
+    // Invert toggle
+    const invertField = document.createElement('div');
+    invertField.className = 'field';
+    const invertLabel = document.createElement('label');
+    invertLabel.textContent = 'Background';
+    const invertToggle = document.createElement('div');
+    invertToggle.className = 'mode-toggle';
+    const blackBtn = document.createElement('button');
+    blackBtn.textContent = 'Black';
+    blackBtn.className = !s.lumaInverted ? 'active' : '';
+    const whiteBtn = document.createElement('button');
+    whiteBtn.textContent = 'White';
+    whiteBtn.className = s.lumaInverted ? 'active' : '';
+    blackBtn.addEventListener('click', () => {
+      if (!s.lumaInverted) return;
+      api.send('stream-action', { action: 'set-luma-inverted', streamId: s.id, inverted: false });
+    });
+    whiteBtn.addEventListener('click', () => {
+      if (s.lumaInverted) return;
+      api.send('stream-action', { action: 'set-luma-inverted', streamId: s.id, inverted: true });
+    });
+    invertToggle.appendChild(blackBtn);
+    invertToggle.appendChild(whiteBtn);
+    invertField.appendChild(invertLabel);
+    invertField.appendChild(invertToggle);
+    bg.body.appendChild(invertField);
+
+    const info = document.createElement('div');
+    info.className = 'luma-info';
+    info.innerHTML = s.lumaInverted
+      ? 'Output uses a <strong>white background</strong> for inverted luma keying. Dark overlay elements are visible; bright areas become transparent.<br><br>In OBS, add a <em>Luma Key</em> filter to the source to remove the white background.'
+      : 'Output uses a <strong>black background</strong> for luma keying. Bright overlay elements are visible; dark areas become transparent.<br><br>In OBS, add a <em>Luma Key</em> filter to the source to remove the black background.';
+    bg.body.appendChild(info);
+  }
+
+  sidebar.appendChild(bg.section);
+
+  // ─ AUDIO section ─
+  const audioMode = s.audioMode || 'none';
+  const aud = makeSection('sec-audio', 'Audio', true);
+
+  // Audio mode selector
+  const audioModeField = document.createElement('div');
+  audioModeField.className = 'field';
+  const audioModeLabel = document.createElement('label');
+  audioModeLabel.textContent = 'Source';
+  const audioModeToggle = document.createElement('div');
+  audioModeToggle.className = 'mode-toggle';
+  const noneBtn = document.createElement('button');
+  noneBtn.textContent = 'None';
+  noneBtn.className = audioMode === 'none' ? 'active' : '';
+  const templateBtn = document.createElement('button');
+  templateBtn.textContent = 'Template';
+  templateBtn.className = audioMode === 'template' ? 'active' : '';
+  const deviceBtn = document.createElement('button');
+  deviceBtn.textContent = 'Device';
+  deviceBtn.className = audioMode === 'device' ? 'active' : '';
+  noneBtn.addEventListener('click', () => {
+    if (audioMode === 'none') return;
+    api.send('stream-action', { action: 'set-audio-mode', streamId: s.id, mode: 'none' });
+  });
+  templateBtn.addEventListener('click', () => {
+    if (audioMode === 'template') return;
+    api.send('stream-action', { action: 'set-audio-mode', streamId: s.id, mode: 'template' });
+  });
+  deviceBtn.addEventListener('click', () => {
+    if (audioMode === 'device') return;
+    api.send('stream-action', { action: 'set-audio-mode', streamId: s.id, mode: 'device' });
+  });
+  audioModeToggle.appendChild(noneBtn);
+  audioModeToggle.appendChild(templateBtn);
+  audioModeToggle.appendChild(deviceBtn);
+  audioModeField.appendChild(audioModeLabel);
+  audioModeField.appendChild(audioModeToggle);
+  aud.body.appendChild(audioModeField);
+
+  // Mode-specific settings
+  if (audioMode === 'none') {
+    const info = document.createElement('div');
+    info.className = 'audio-info';
+    info.textContent = 'A silent audio track is included in the RTMP output.';
+    aud.body.appendChild(info);
+  } else if (audioMode === 'template') {
+    const info = document.createElement('div');
+    info.className = 'audio-info';
+    info.innerHTML = 'Audio from the HTML template page (Web Audio API) is captured and included in the RTMP output.<br><br>The template must use the <code>AudioContext</code> API to produce sound.';
+    aud.body.appendChild(info);
+  } else if (audioMode === 'device') {
+    // Device selector dropdown
+    const devField = document.createElement('div');
+    devField.className = 'field';
+    const devLabel = document.createElement('label');
+    devLabel.textContent = 'Device';
+    const devSelect = document.createElement('select');
+    devSelect.id = `audio-dev-${s.id}`;
+    const optNone = document.createElement('option');
+    optNone.value = '';
+    optNone.textContent = '— Select device —';
+    devSelect.appendChild(optNone);
+
+    // Populate from cached audio devices
+    if (window._audioDevices) {
+      for (const d of window._audioDevices) {
+        const opt = document.createElement('option');
+        opt.value = d.index;
+        opt.textContent = d.name || `Device ${d.index}`;
+        if (d.index === (s.audioDevice || '')) opt.selected = true;
+        devSelect.appendChild(opt);
+      }
+    }
+
+    devSelect.addEventListener('change', () => {
+      api.send('stream-action', { action: 'set-audio-device', streamId: s.id, device: devSelect.value });
+    });
+
+    const refreshBtn = document.createElement('button');
+    refreshBtn.className = 'chroma-reset';
+    refreshBtn.textContent = 'Refresh';
+    refreshBtn.title = 'Refresh audio device list';
+    refreshBtn.addEventListener('click', () => {
+      api.send('get-audio-devices');
+    });
+
+    devField.appendChild(devLabel);
+    devField.appendChild(devSelect);
+    devField.appendChild(refreshBtn);
+    aud.body.appendChild(devField);
+
+    const info = document.createElement('div');
+    info.className = 'audio-info';
+    info.innerHTML = 'Audio from the selected system input device is captured by FFmpeg and included in the RTMP output.';
+    aud.body.appendChild(info);
+
+    // Request device list if not cached
+    if (!window._audioDevices) {
+      api.send('get-audio-devices');
+    }
+  }
+
+  sidebar.appendChild(aud.section);
+
+  // ─ TIMER section ─
+  const timerState = s.timer || { running: false, direction: 'down', duration: 300, remaining: 300, display: '05:00' };
+  const tmr = makeSection('sec-timer', 'Timer', true);
+
+  // Timer display
+  const timerDisplay = document.createElement('div');
+  timerDisplay.style.cssText = 'text-align:center;font-size:32px;font-weight:700;font-family:monospace;color:#e0e0e0;padding:8px 0;letter-spacing:2px;';
+  timerDisplay.id = `timer-display-${s.id}`;
+  timerDisplay.textContent = timerState.display || '05:00';
+  if (timerState.running) timerDisplay.style.color = '#4ade80';
+  tmr.body.appendChild(timerDisplay);
+
+  // Time inputs (minutes and seconds)
+  const timeField = document.createElement('div');
+  timeField.className = 'field';
+  const timeLabel = document.createElement('label');
+  timeLabel.textContent = 'Set Time';
+  const timeInputWrap = document.createElement('div');
+  timeInputWrap.style.cssText = 'display:flex;gap:4px;align-items:center;';
+
+  const totalSec = timerState.duration || 300;
+  const minInp = document.createElement('input');
+  minInp.type = 'number';
+  minInp.min = '0';
+  minInp.max = '999';
+  minInp.value = String(Math.floor(totalSec / 60));
+  minInp.style.cssText = 'width:60px;text-align:center;';
+  minInp.title = 'Minutes';
+  const sep = document.createElement('span');
+  sep.textContent = ':';
+  sep.style.cssText = 'color:#999;font-weight:bold;';
+  const secInp = document.createElement('input');
+  secInp.type = 'number';
+  secInp.min = '0';
+  secInp.max = '59';
+  secInp.value = String(totalSec % 60).padStart(2, '0');
+  secInp.style.cssText = 'width:60px;text-align:center;';
+  secInp.title = 'Seconds';
+
+  const applyTime = () => {
+    const m = Math.max(0, parseInt(minInp.value) || 0);
+    const sc = Math.max(0, Math.min(59, parseInt(secInp.value) || 0));
+    const total = m * 60 + sc;
+    api.send('stream-action', { action: 'timer-set-duration', streamId: s.id, seconds: total });
+  };
+  minInp.addEventListener('change', applyTime);
+  secInp.addEventListener('change', applyTime);
+
+  timeInputWrap.appendChild(minInp);
+  timeInputWrap.appendChild(sep);
+  timeInputWrap.appendChild(secInp);
+  timeField.appendChild(timeLabel);
+  timeField.appendChild(timeInputWrap);
+  tmr.body.appendChild(timeField);
+
+  // Direction toggle
+  const dirField = document.createElement('div');
+  dirField.className = 'field';
+  const dirLabel = document.createElement('label');
+  dirLabel.textContent = 'Direction';
+  const dirToggle = document.createElement('div');
+  dirToggle.className = 'mode-toggle';
+  const dirDownBtn = document.createElement('button');
+  dirDownBtn.textContent = 'Down';
+  dirDownBtn.className = timerState.direction === 'down' ? 'active' : '';
+  const dirUpBtn = document.createElement('button');
+  dirUpBtn.textContent = 'Up';
+  dirUpBtn.className = timerState.direction === 'up' ? 'active' : '';
+  dirDownBtn.addEventListener('click', () => {
+    if (timerState.direction === 'down') return;
+    api.send('stream-action', { action: 'timer-set-direction', streamId: s.id, direction: 'down' });
+  });
+  dirUpBtn.addEventListener('click', () => {
+    if (timerState.direction === 'up') return;
+    api.send('stream-action', { action: 'timer-set-direction', streamId: s.id, direction: 'up' });
+  });
+  dirToggle.appendChild(dirDownBtn);
+  dirToggle.appendChild(dirUpBtn);
+  dirField.appendChild(dirLabel);
+  dirField.appendChild(dirToggle);
+  tmr.body.appendChild(dirField);
+
+  // Start / Stop / Reset buttons
+  const timerActions = document.createElement('div');
+  timerActions.style.cssText = 'display:flex;gap:6px;margin-top:4px;';
+  const timerStartBtn = document.createElement('button');
+  timerStartBtn.id = `timer-start-${s.id}`;
+  timerStartBtn.className = 'btn btn-go';
+  timerStartBtn.textContent = timerState.running ? '▶ Running' : '▶ Start';
+  timerStartBtn.disabled = timerState.running;
+  timerStartBtn.style.flex = '1';
+  timerStartBtn.addEventListener('click', () => {
+    api.send('stream-action', { action: 'timer-start', streamId: s.id });
+  });
+  const timerStopBtn = document.createElement('button');
+  timerStopBtn.id = `timer-stop-${s.id}`;
+  timerStopBtn.className = 'btn btn-stop';
+  timerStopBtn.textContent = '⏸ Stop';
+  timerStopBtn.disabled = !timerState.running;
+  timerStopBtn.style.flex = '1';
+  timerStopBtn.addEventListener('click', () => {
+    api.send('stream-action', { action: 'timer-stop', streamId: s.id });
+  });
+  const timerResetBtn = document.createElement('button');
+  timerResetBtn.className = 'btn';
+  timerResetBtn.textContent = '↺ Reset';
+  timerResetBtn.style.flex = '1';
+  timerResetBtn.addEventListener('click', () => {
+    api.send('stream-action', { action: 'timer-reset', streamId: s.id });
+  });
+  timerActions.appendChild(timerStartBtn);
+  timerActions.appendChild(timerStopBtn);
+  timerActions.appendChild(timerResetBtn);
+  tmr.body.appendChild(timerActions);
+
+  sidebar.appendChild(tmr.section);
+
+  // ─ SUBTITLES section ─
+  const subsEnabled = s.subtitlesEnabled || false;
+  const subsLang = s.subtitleLanguage || 'auto';
+  const sub = makeSection('sec-subtitles', 'Subtitles', true);
+
+  // Subtitles enable toggle
+  const subEnableField = document.createElement('div');
+  subEnableField.className = 'field';
+  const subEnableLabel = document.createElement('label');
+  subEnableLabel.textContent = 'Enabled';
+  const subEnableToggle = document.createElement('div');
+  subEnableToggle.className = 'mode-toggle';
+  const subOffBtn = document.createElement('button');
+  subOffBtn.textContent = 'Off';
+  subOffBtn.className = !subsEnabled ? 'active' : '';
+  const subOnBtn = document.createElement('button');
+  subOnBtn.textContent = 'On';
+  subOnBtn.className = subsEnabled ? 'active' : '';
+  subOffBtn.addEventListener('click', () => {
+    if (!subsEnabled) return;
+    api.send('stream-action', { action: 'set-subtitles-enabled', streamId: s.id, enabled: false });
+  });
+  subOnBtn.addEventListener('click', () => {
+    if (subsEnabled) return;
+    api.send('stream-action', { action: 'set-subtitles-enabled', streamId: s.id, enabled: true });
+  });
+  subEnableToggle.appendChild(subOffBtn);
+  subEnableToggle.appendChild(subOnBtn);
+  subEnableField.appendChild(subEnableLabel);
+  subEnableField.appendChild(subEnableToggle);
+  sub.body.appendChild(subEnableField);
+
+  // Language selector (shown when enabled)
+  if (subsEnabled) {
+    const langField = document.createElement('div');
+    langField.className = 'field';
+    const langLabel = document.createElement('label');
+    langLabel.textContent = 'Language';
+    const langSelect = document.createElement('select');
+    const langs = [
+      ['auto', 'Auto-detect'],
+      ['af', 'Afrikaans'],
+      ['am', 'Amharic'],
+      ['ar', 'Arabic'],
+      ['as', 'Assamese'],
+      ['az', 'Azerbaijani'],
+      ['ba', 'Bashkir'],
+      ['be', 'Belarusian'],
+      ['bg', 'Bulgarian'],
+      ['bn', 'Bengali'],
+      ['bo', 'Tibetan'],
+      ['br', 'Breton'],
+      ['bs', 'Bosnian'],
+      ['ca', 'Catalan'],
+      ['cs', 'Czech'],
+      ['cy', 'Welsh'],
+      ['da', 'Danish'],
+      ['de', 'German'],
+      ['el', 'Greek'],
+      ['en', 'English'],
+      ['es', 'Spanish'],
+      ['et', 'Estonian'],
+      ['eu', 'Basque'],
+      ['fa', 'Persian'],
+      ['fi', 'Finnish'],
+      ['fo', 'Faroese'],
+      ['fr', 'French'],
+      ['gl', 'Galician'],
+      ['gu', 'Gujarati'],
+      ['ha', 'Hausa'],
+      ['haw', 'Hawaiian'],
+      ['he', 'Hebrew'],
+      ['hi', 'Hindi'],
+      ['hr', 'Croatian'],
+      ['ht', 'Haitian Creole'],
+      ['hu', 'Hungarian'],
+      ['hy', 'Armenian'],
+      ['id', 'Indonesian'],
+      ['is', 'Icelandic'],
+      ['it', 'Italian'],
+      ['ja', 'Japanese'],
+      ['jw', 'Javanese'],
+      ['ka', 'Georgian'],
+      ['kk', 'Kazakh'],
+      ['km', 'Khmer'],
+      ['kn', 'Kannada'],
+      ['ko', 'Korean'],
+      ['la', 'Latin'],
+      ['lb', 'Luxembourgish'],
+      ['ln', 'Lingala'],
+      ['lo', 'Lao'],
+      ['lt', 'Lithuanian'],
+      ['lv', 'Latvian'],
+      ['mg', 'Malagasy'],
+      ['mi', 'Maori'],
+      ['mk', 'Macedonian'],
+      ['ml', 'Malayalam'],
+      ['mn', 'Mongolian'],
+      ['mr', 'Marathi'],
+      ['ms', 'Malay'],
+      ['mt', 'Maltese'],
+      ['my', 'Myanmar'],
+      ['ne', 'Nepali'],
+      ['nl', 'Dutch'],
+      ['nn', 'Nynorsk'],
+      ['no', 'Norwegian'],
+      ['oc', 'Occitan'],
+      ['pa', 'Punjabi'],
+      ['pl', 'Polish'],
+      ['ps', 'Pashto'],
+      ['pt', 'Portuguese'],
+      ['ro', 'Romanian'],
+      ['ru', 'Russian'],
+      ['sa', 'Sanskrit'],
+      ['sd', 'Sindhi'],
+      ['si', 'Sinhala'],
+      ['sk', 'Slovak'],
+      ['sl', 'Slovenian'],
+      ['sn', 'Shona'],
+      ['so', 'Somali'],
+      ['sq', 'Albanian'],
+      ['sr', 'Serbian'],
+      ['su', 'Sundanese'],
+      ['sv', 'Swedish'],
+      ['sw', 'Swahili'],
+      ['ta', 'Tamil'],
+      ['te', 'Telugu'],
+      ['tg', 'Tajik'],
+      ['th', 'Thai'],
+      ['tk', 'Turkmen'],
+      ['tl', 'Tagalog'],
+      ['tr', 'Turkish'],
+      ['tt', 'Tatar'],
+      ['uk', 'Ukrainian'],
+      ['ur', 'Urdu'],
+      ['uz', 'Uzbek'],
+      ['vi', 'Vietnamese'],
+      ['yi', 'Yiddish'],
+      ['yo', 'Yoruba'],
+      ['zh', 'Chinese'],
+    ];
+    for (const [code, name] of langs) {
+      const opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = name;
+      if (code === subsLang) opt.selected = true;
+      langSelect.appendChild(opt);
+    }
+    langSelect.addEventListener('change', () => {
+      api.send('stream-action', { action: 'set-subtitle-language', streamId: s.id, language: langSelect.value });
+    });
+    langField.appendChild(langLabel);
+    langField.appendChild(langSelect);
+    sub.body.appendChild(langField);
+
+    // Requirements info
+    const audioMode = s.audioMode || 'none';
+    if (audioMode !== 'device') {
+      const warn = document.createElement('div');
+      warn.className = 'audio-info';
+      warn.style.color = '#ff9800';
+      warn.innerHTML = '⚠ Subtitles require <strong>Audio → Device</strong> mode with a device selected.';
+      sub.body.appendChild(warn);
+    } else if (!s.audioDevice) {
+      const warn = document.createElement('div');
+      warn.className = 'audio-info';
+      warn.style.color = '#ff9800';
+      warn.textContent = '⚠ Please select an audio device in the Audio section.';
+      sub.body.appendChild(warn);
+    } else {
+      const info = document.createElement('div');
+      info.className = 'audio-info';
+      info.innerHTML = 'Live captions will be generated from the device audio using local speech recognition (whisper.cpp). Subtitles appear at the bottom of the overlay.';
+      sub.body.appendChild(info);
+    }
+  } else {
+    const info = document.createElement('div');
+    info.className = 'audio-info';
+    info.textContent = 'Enable to generate live captions from device audio using local speech recognition.';
+    sub.body.appendChild(info);
+  }
+
+  sidebar.appendChild(sub.section);
+
+  // ─ PLACEHOLDERS section ─
+  const ph = makeSection('sec-placeholders', 'Placeholders', true);
+  ph.body.id = 'ph-wrap';
+  fillPlaceholderFields(ph.body, s);
+
+  sidebar.appendChild(ph.section);
+
+  // ─ FUNCTION section ─
+  const fn = makeSection('sec-function', 'Function', true);
+
+  const fnNameField = document.createElement('div');
+  fnNameField.className = 'field';
+  const fnNameLabel = document.createElement('label');
+  fnNameLabel.textContent = 'Function Name';
+  const fnNameInp = document.createElement('input');
+  fnNameInp.type = 'text';
+  fnNameInp.id = `fn-name-${s.id}`;
+  fnNameInp.placeholder = 'e.g. startTimer';
+  fnNameField.appendChild(fnNameLabel);
+  fnNameField.appendChild(fnNameInp);
+  fn.body.appendChild(fnNameField);
+
+  const fnArgField = document.createElement('div');
+  fnArgField.className = 'field';
+  const fnArgLabel = document.createElement('label');
+  fnArgLabel.textContent = 'Argument';
+  const fnArgInp = document.createElement('textarea');
+  fnArgInp.id = `fn-arg-${s.id}`;
+  fnArgInp.rows = 3;
+  fnArgInp.placeholder = 'String or JSON data';
+  fnArgInp.style.resize = 'vertical';
+  fnArgInp.style.fontFamily = 'inherit';
+  fnArgInp.style.fontSize = '12px';
+  fnArgField.appendChild(fnArgLabel);
+  fnArgField.appendChild(fnArgInp);
+  fn.body.appendChild(fnArgField);
+
+  const fnActions = document.createElement('div');
+  fnActions.style.display = 'flex';
+  fnActions.style.gap = '8px';
+  fnActions.style.alignItems = 'center';
+  const fnExecBtn = document.createElement('button');
+  fnExecBtn.className = 'btn btn-go';
+  fnExecBtn.textContent = 'Execute';
+  fnExecBtn.style.flex = '0 0 auto';
+  fnExecBtn.addEventListener('click', () => {
+    const name = fnNameInp.value.trim();
+    if (!name) return;
+    api.send('stream-action', {
+      action: 'execute-function',
+      streamId: s.id,
+      functionName: name,
+      argument: fnArgInp.value,
+    });
+  });
+  const fnResult = document.createElement('div');
+  fnResult.id = `fn-result-${s.id}`;
+  fnResult.className = 'fn-result';
+  fnActions.appendChild(fnExecBtn);
+  fnActions.appendChild(fnResult);
+  fn.body.appendChild(fnActions);
+
+  const fnInfo = document.createElement('div');
+  fnInfo.className = 'audio-info';
+  fnInfo.innerHTML = 'Call a global <code>window</code> function defined in the template. The argument is passed as-is (strings) or parsed as JSON if valid.';
+  fn.body.appendChild(fnInfo);
+
+  sidebar.appendChild(fn.section);
 }
 
 // ── Fill placeholder inputs ───────────────
@@ -974,6 +1902,172 @@ function patchActiveView() {
   }
 }
 
+// ── Model picker dialog ──────────────────
+function showModelPickerDialog(streamId) {
+  // Remove any existing modal
+  const existing = document.getElementById('model-picker-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'model-picker-overlay';
+  overlay.className = 'modal-overlay';
+
+  const box = document.createElement('div');
+  box.className = 'modal-box';
+
+  const title = document.createElement('h3');
+  title.textContent = 'Speech Model Required';
+  box.appendChild(title);
+
+  const desc = document.createElement('p');
+  desc.textContent = 'No speech recognition model is downloaded. Choose a model to download for subtitle generation.';
+  box.appendChild(desc);
+
+  const list = document.createElement('div');
+  list.className = 'modal-model-list';
+
+  const models = whisperModels.length > 0
+    ? whisperModels
+    : [
+        { id: 'tiny',     label: 'Tiny',      sizeMB: 75 },
+        { id: 'base',     label: 'Base',      sizeMB: 142 },
+        { id: 'small',    label: 'Small',     sizeMB: 466 },
+        { id: 'medium',   label: 'Medium',    sizeMB: 1500 },
+        { id: 'large-v3', label: 'Large v3',  sizeMB: 3100 },
+      ];
+
+  for (const m of models) {
+    const btn = document.createElement('button');
+    btn.className = 'modal-model-btn';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = m.label || m.id;
+    btn.appendChild(nameSpan);
+
+    const sizeSpan = document.createElement('span');
+    sizeSpan.className = 'model-size';
+    const mb = m.sizeMB || 0;
+    sizeSpan.textContent = mb >= 1000 ? `${(mb / 1000).toFixed(1)} GB` : `${mb} MB`;
+    btn.appendChild(sizeSpan);
+
+    btn.addEventListener('click', () => {
+      overlay.remove();
+      api.send('whisper-model-selected', { modelId: m.id, streamId });
+    });
+
+    list.appendChild(btn);
+  }
+  box.appendChild(list);
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'modal-cancel';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  box.appendChild(cancelBtn);
+
+  overlay.appendChild(box);
+
+  // Close on overlay click (outside the box)
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  document.body.appendChild(overlay);
+}
+
+// ── Render whisper model rows ─────────────
+function renderWhisperModels(container) {
+  container.innerHTML = '';
+  if (!whisperModels || whisperModels.length === 0) {
+    container.innerHTML = '<div class="settings-note">No models available</div>';
+    return;
+  }
+  for (const m of whisperModels) {
+    const row = document.createElement('div');
+    row.className = 'whisper-model-row';
+
+    // Left side: name + badge
+    const info = document.createElement('div');
+    info.className = 'whisper-model-info';
+
+    const name = document.createElement('span');
+    name.className = 'whisper-model-name';
+    name.textContent = m.label;
+    info.appendChild(name);
+
+    const badge = document.createElement('span');
+    badge.className = 'whisper-model-badge';
+    if (m.downloading) {
+      badge.classList.add('active');
+      badge.textContent = 'Downloading…';
+    } else if (m.active) {
+      badge.classList.add('active');
+      badge.textContent = 'Active';
+    } else if (m.downloaded) {
+      badge.classList.add('downloaded');
+      badge.textContent = 'Downloaded';
+    } else {
+      badge.classList.add('not-downloaded');
+      badge.textContent = 'Not Downloaded';
+    }
+    info.appendChild(badge);
+    row.appendChild(info);
+
+    // Right side: action buttons
+    const actions = document.createElement('div');
+    actions.className = 'whisper-model-actions';
+
+    if (m.downloading) {
+      // Cancel button for in-progress download
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn-delete';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.addEventListener('click', () => {
+        api.send('cancel-whisper-download');
+        cancelBtn.disabled = true;
+        cancelBtn.textContent = 'Cancelling…';
+      });
+      actions.appendChild(cancelBtn);
+    } else if (!m.downloaded) {
+      // Download button
+      const dlBtn = document.createElement('button');
+      dlBtn.textContent = 'Download';
+      dlBtn.addEventListener('click', () => {
+        dlBtn.disabled = true;
+        dlBtn.textContent = 'Downloading…';
+        api.send('download-whisper-model', m.id);
+      });
+      actions.appendChild(dlBtn);
+    } else {
+      // Downloaded (active or not) — show Use + Delete
+      if (!m.active) {
+        const useBtn = document.createElement('button');
+        useBtn.className = 'btn-use';
+        useBtn.textContent = 'Use';
+        useBtn.addEventListener('click', () => {
+          api.send('set-whisper-model', m.id);
+        });
+        actions.appendChild(useBtn);
+      }
+
+      // Delete button (available for all downloaded models, including active)
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-delete';
+      delBtn.textContent = 'Delete';
+      delBtn.addEventListener('click', () => {
+        const extra = m.active ? ' This will disable subtitles on all streams.' : '';
+        if (confirm(`Delete ${m.label}?${extra} You can re-download it later.`)) {
+          api.send('delete-whisper-model', m.id);
+        }
+      });
+      actions.appendChild(delBtn);
+    }
+
+    row.appendChild(actions);
+    container.appendChild(row);
+  }
+}
+
 // ── Build settings view ───────────────────
 function buildSettingsView() {
   const area = document.getElementById('preview-area');
@@ -994,7 +2088,33 @@ function buildSettingsView() {
   const body = document.createElement('div');
   body.className = 'settings-body';
 
-  // ─ Server section ─
+  // ════════════════════════════════════════
+  // SECTION 1 — General Settings
+  // ════════════════════════════════════════
+  function makeSettingsSection(title) {
+    const sec = document.createElement('div');
+    sec.className = 'settings-section';
+    const hdr = document.createElement('div');
+    hdr.className = 'settings-section-header';
+    const label = document.createElement('span');
+    label.textContent = title;
+    const arrow = document.createElement('span');
+    arrow.className = 'collapse-arrow';
+    arrow.textContent = '▼';
+    hdr.appendChild(label);
+    hdr.appendChild(arrow);
+    hdr.addEventListener('click', () => sec.classList.toggle('collapsed'));
+    sec.appendChild(hdr);
+    const bd = document.createElement('div');
+    bd.className = 'settings-section-body';
+    sec.appendChild(bd);
+    return { section: sec, body: bd };
+  }
+
+  const general = makeSettingsSection('General');
+  const generalSection = general.section;
+  const generalBody = general.body;
+  // ─ Server group ─
   const serverGroup = document.createElement('div');
   serverGroup.className = 'settings-group';
   serverGroup.innerHTML = '<h3>Server</h3>';
@@ -1026,44 +2146,9 @@ function buildSettingsView() {
   portNote.textContent = 'Changing RTMP port will stop all running streams.';
   serverGroup.appendChild(portNote);
 
-  body.appendChild(serverGroup);
+  generalBody.appendChild(serverGroup);
 
-  // ─ Overlay section ─
-  const overlayGroup = document.createElement('div');
-  overlayGroup.className = 'settings-group';
-  overlayGroup.innerHTML = '<h3>Overlay</h3>';
-
-  // Chroma key color
-  const colorRow = document.createElement('div');
-  colorRow.className = 'settings-row';
-  colorRow.innerHTML = `<label>Background Color</label>`;
-  const colorInp = document.createElement('input');
-  colorInp.type = 'color'; colorInp.id = 'set-chroma-color';
-  colorInp.value = currentChromaKeyColor;
-  const colorHex = document.createElement('input');
-  colorHex.type = 'text'; colorHex.className = 'color-hex';
-  colorHex.id = 'set-chroma-hex';
-  colorHex.value = currentChromaKeyColor;
-  colorHex.maxLength = 7;
-  colorInp.addEventListener('input', () => { colorHex.value = colorInp.value.toUpperCase(); });
-  colorHex.addEventListener('change', () => {
-    let v = colorHex.value.trim();
-    if (!v.startsWith('#')) v = '#' + v;
-    if (/^#[0-9A-Fa-f]{6}$/.test(v)) { colorInp.value = v; colorHex.value = v.toUpperCase(); }
-    else { colorHex.value = colorInp.value.toUpperCase(); }
-  });
-  colorRow.appendChild(colorInp);
-  colorRow.appendChild(colorHex);
-  overlayGroup.appendChild(colorRow);
-
-  const colorNote = document.createElement('div');
-  colorNote.className = 'settings-note';
-  colorNote.textContent = 'Default chroma key background. Streams can override individually from their control panel.';
-  overlayGroup.appendChild(colorNote);
-
-  body.appendChild(overlayGroup);
-
-  // ─ Streams section ─
+  // ─ Streams group ─
   const streamsGroup = document.createElement('div');
   streamsGroup.className = 'settings-group';
   streamsGroup.innerHTML = '<h3>Streams</h3>';
@@ -1076,24 +2161,17 @@ function buildSettingsView() {
   countInp.type = 'number'; countInp.id = 'set-stream-count';
   countInp.min = '1'; countInp.max = '12';
   countInp.value = String(streams.length);
-  countInp.addEventListener('change', () => rebuildKeysList());
   countRow.appendChild(countInp);
   streamsGroup.appendChild(countRow);
 
-  // Reduction warning
   const reduceNote = document.createElement('div');
   reduceNote.className = 'settings-note';
   reduceNote.textContent = 'Reducing count will stop and remove streams above the new limit.';
   streamsGroup.appendChild(reduceNote);
 
-  // Stream keys list
-  const keysWrap = document.createElement('div');
-  keysWrap.id = 'stream-keys-wrap';
-  streamsGroup.appendChild(keysWrap);
+  generalBody.appendChild(streamsGroup);
 
-  body.appendChild(streamsGroup);
-
-  // ─ Actions ─
+  // ─ Save button + message (inside General section) ─
   const actions = document.createElement('div');
   actions.className = 'settings-actions';
   const saveBtn = document.createElement('button');
@@ -1102,63 +2180,380 @@ function buildSettingsView() {
   saveBtn.textContent = 'Apply & Save';
   saveBtn.addEventListener('click', applySettings);
   actions.appendChild(saveBtn);
-  body.appendChild(actions);
+  generalBody.appendChild(actions);
 
-  // ─ Message ─
   const msg = document.createElement('div');
   msg.id = 'settings-msg';
   msg.className = 'settings-msg';
-  body.appendChild(msg);
+  generalBody.appendChild(msg);
+
+  generalSection.appendChild(generalBody);
+  body.appendChild(generalSection);
+
+  // ════════════════════════════════════════
+  // SECTION 2 — Stream Output
+  // ════════════════════════════════════════
+  const output = makeSettingsSection('Stream Output');
+
+  // ─ Resolution group ─
+  const resGroup = document.createElement('div');
+  resGroup.className = 'settings-group';
+  resGroup.innerHTML = '<h3>Resolution</h3>';
+
+  const resRow = document.createElement('div');
+  resRow.className = 'settings-row';
+  resRow.innerHTML = '<label>Preset</label>';
+  const resSel = document.createElement('select');
+  resSel.id = 'set-resolution';
+  const resOptions = [
+    { label: '1920 × 1080 (Full HD)', w: 1920, h: 1080 },
+    { label: '1280 × 720 (HD)', w: 1280, h: 720 },
+    { label: '3840 × 2160 (4K)', w: 3840, h: 2160 },
+    { label: '2560 × 1440 (QHD)', w: 2560, h: 1440 },
+    { label: '1024 × 576', w: 1024, h: 576 },
+  ];
+  let customRes = true;
+  resOptions.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = `${o.w}x${o.h}`;
+    opt.textContent = o.label;
+    if (currentResolution.width === o.w && currentResolution.height === o.h) {
+      opt.selected = true;
+      customRes = false;
+    }
+    resSel.appendChild(opt);
+  });
+  // Custom option for non-preset resolutions
+  const customOpt = document.createElement('option');
+  customOpt.value = 'custom';
+  customOpt.textContent = 'Custom';
+  if (customRes) customOpt.selected = true;
+  resSel.appendChild(customOpt);
+
+  resRow.appendChild(resSel);
+  resGroup.appendChild(resRow);
+
+  // Custom width/height inputs
+  const customRow = document.createElement('div');
+  customRow.className = 'settings-row';
+  customRow.id = 'custom-res-row';
+  customRow.style.display = customRes || resSel.value === 'custom' ? 'flex' : 'none';
+  customRow.innerHTML = '<label>Size</label>';
+  const customWrap = document.createElement('div');
+  customWrap.style.cssText = 'display:flex;gap:4px;align-items:center;';
+  const widthInp = document.createElement('input');
+  widthInp.type = 'number'; widthInp.id = 'set-res-width';
+  widthInp.min = '320'; widthInp.max = '7680';
+  widthInp.value = String(currentResolution.width);
+  widthInp.style.cssText = 'width:70px;text-align:center;';
+  const xSep = document.createElement('span');
+  xSep.textContent = '×';
+  xSep.style.cssText = 'color:#999;font-weight:bold;';
+  const heightInp = document.createElement('input');
+  heightInp.type = 'number'; heightInp.id = 'set-res-height';
+  heightInp.min = '240'; heightInp.max = '4320';
+  heightInp.value = String(currentResolution.height);
+  heightInp.style.cssText = 'width:70px;text-align:center;';
+  customWrap.appendChild(widthInp);
+  customWrap.appendChild(xSep);
+  customWrap.appendChild(heightInp);
+  customRow.appendChild(customWrap);
+  resGroup.appendChild(customRow);
+
+  resSel.addEventListener('change', () => {
+    const cr = document.getElementById('custom-res-row');
+    if (resSel.value === 'custom') {
+      cr.style.display = 'flex';
+    } else {
+      cr.style.display = 'none';
+      const [w, h] = resSel.value.split('x').map(Number);
+      widthInp.value = String(w);
+      heightInp.value = String(h);
+    }
+  });
+
+  output.body.appendChild(resGroup);
+
+  // ─ Frame Rate group ─
+  const fpsGroup = document.createElement('div');
+  fpsGroup.className = 'settings-group';
+  fpsGroup.innerHTML = '<h3>Frame Rate</h3>';
+
+  const fpsRow = document.createElement('div');
+  fpsRow.className = 'settings-row';
+  fpsRow.innerHTML = '<label>FPS</label>';
+  const fpsSel = document.createElement('select');
+  fpsSel.id = 'set-framerate';
+  [
+    { value: 15,     label: '15 fps' },
+    { value: 23.976, label: '23.976 fps (NTSC Film)' },
+    { value: 24,     label: '24 fps' },
+    { value: 25,     label: '25 fps (PAL)' },
+    { value: 29.97,  label: '29.97 fps (NTSC)' },
+    { value: 30,     label: '30 fps' },
+    { value: 50,     label: '50 fps (PAL)' },
+    { value: 59.94,  label: '59.94 fps (NTSC)' },
+    { value: 60,     label: '60 fps' },
+  ].forEach(({ value, label }) => {
+    const opt = document.createElement('option');
+    opt.value = String(value);
+    opt.textContent = label;
+    if (currentFrameRate === value) opt.selected = true;
+    fpsSel.appendChild(opt);
+  });
+  fpsRow.appendChild(fpsSel);
+  fpsGroup.appendChild(fpsRow);
+
+  const fpsNote = document.createElement('div');
+  fpsNote.className = 'settings-note';
+  fpsNote.textContent = 'Auto-saved. Changes take effect on next stream start.';
+  fpsGroup.appendChild(fpsNote);
+
+  output.body.appendChild(fpsGroup);
+
+  body.appendChild(output.section);
+
+  // ════════════════════════════════════════
+  // SECTION 2b — Encoding
+  // ════════════════════════════════════════
+  const enc = makeSettingsSection('Encoding');
+
+  // --- H.264 group ---
+  const h264Group = document.createElement('div');
+  h264Group.className = 'settings-group';
+  h264Group.innerHTML = '<h3>H.264 Video</h3>';
+
+  // Preset
+  const presetRow = document.createElement('div');
+  presetRow.className = 'settings-row';
+  presetRow.innerHTML = '<label>Preset</label>';
+  const presetSel = document.createElement('select');
+  presetSel.id = 'set-enc-preset';
+  ['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow', 'slower', 'veryslow'].forEach(p => {
+    const o = document.createElement('option');
+    o.value = p; o.textContent = p;
+    if (currentEncoding.preset === p) o.selected = true;
+    presetSel.appendChild(o);
+  });
+  presetRow.appendChild(presetSel);
+  h264Group.appendChild(presetRow);
+
+  // Profile
+  const profileRow = document.createElement('div');
+  profileRow.className = 'settings-row';
+  profileRow.innerHTML = '<label>Profile</label>';
+  const profileSel = document.createElement('select');
+  profileSel.id = 'set-enc-profile';
+  ['baseline', 'main', 'high'].forEach(p => {
+    const o = document.createElement('option');
+    o.value = p; o.textContent = p;
+    if (currentEncoding.profile === p) o.selected = true;
+    profileSel.appendChild(o);
+  });
+  profileRow.appendChild(profileSel);
+  h264Group.appendChild(profileRow);
+
+  // Level
+  const levelRow = document.createElement('div');
+  levelRow.className = 'settings-row';
+  levelRow.innerHTML = '<label>Level</label>';
+  const levelSel = document.createElement('select');
+  levelSel.id = 'set-enc-level';
+  ['3.0', '3.1', '4.0', '4.1', '4.2', '5.0', '5.1', '5.2'].forEach(l => {
+    const o = document.createElement('option');
+    o.value = l; o.textContent = l;
+    if (currentEncoding.level === l) o.selected = true;
+    levelSel.appendChild(o);
+  });
+  levelRow.appendChild(levelSel);
+  h264Group.appendChild(levelRow);
+
+  // Tune
+  const tuneRow = document.createElement('div');
+  tuneRow.className = 'settings-row';
+  tuneRow.innerHTML = '<label>Tune</label>';
+  const tuneSel = document.createElement('select');
+  tuneSel.id = 'set-enc-tune';
+  [{ v: 'zerolatency', l: 'Zero Latency' }, { v: 'film', l: 'Film' }, { v: 'animation', l: 'Animation' }, { v: 'grain', l: 'Grain' }, { v: 'stillimage', l: 'Still Image' }, { v: '', l: 'None' }].forEach(({ v, l }) => {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = l;
+    if (currentEncoding.tune === v) o.selected = true;
+    tuneSel.appendChild(o);
+  });
+  tuneRow.appendChild(tuneSel);
+  h264Group.appendChild(tuneRow);
+
+  // Pixel format
+  const pixRow = document.createElement('div');
+  pixRow.className = 'settings-row';
+  pixRow.innerHTML = '<label>Pixel Format</label>';
+  const pixSel = document.createElement('select');
+  pixSel.id = 'set-enc-pixfmt';
+  [{ v: 'yuv420p', l: 'yuv420p (standard)' }, { v: 'yuv444p', l: 'yuv444p (better color)' }].forEach(({ v, l }) => {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = l;
+    if (currentEncoding.pixelFormat === v) o.selected = true;
+    pixSel.appendChild(o);
+  });
+  pixRow.appendChild(pixSel);
+  h264Group.appendChild(pixRow);
+
+  enc.body.appendChild(h264Group);
+
+  // --- Bitrate group ---
+  const brGroup = document.createElement('div');
+  brGroup.className = 'settings-group';
+  brGroup.innerHTML = '<h3>Bitrate</h3>';
+
+  // Video bitrate
+  const vbrRow = document.createElement('div');
+  vbrRow.className = 'settings-row';
+  vbrRow.innerHTML = '<label>Video (kbps)</label>';
+  const vbrInp = document.createElement('input');
+  vbrInp.type = 'number'; vbrInp.id = 'set-enc-vbr';
+  vbrInp.min = '500'; vbrInp.max = '50000';
+  vbrInp.value = String(currentEncoding.videoBitrate);
+  vbrRow.appendChild(vbrInp);
+  brGroup.appendChild(vbrRow);
+
+  // Max bitrate
+  const mbrRow = document.createElement('div');
+  mbrRow.className = 'settings-row';
+  mbrRow.innerHTML = '<label>Max (kbps)</label>';
+  const mbrInp = document.createElement('input');
+  mbrInp.type = 'number'; mbrInp.id = 'set-enc-mbr';
+  mbrInp.min = '500'; mbrInp.max = '60000';
+  mbrInp.value = String(currentEncoding.maxBitrate);
+  mbrRow.appendChild(mbrInp);
+  brGroup.appendChild(mbrRow);
+
+  // Buffer size
+  const bufRow = document.createElement('div');
+  bufRow.className = 'settings-row';
+  bufRow.innerHTML = '<label>Buffer (kbps)</label>';
+  const bufInp = document.createElement('input');
+  bufInp.type = 'number'; bufInp.id = 'set-enc-buf';
+  bufInp.min = '1000'; bufInp.max = '100000';
+  bufInp.value = String(currentEncoding.bufferSize);
+  bufRow.appendChild(bufInp);
+  brGroup.appendChild(bufRow);
+
+  // Audio bitrate
+  const abrRow = document.createElement('div');
+  abrRow.className = 'settings-row';
+  abrRow.innerHTML = '<label>Audio (kbps)</label>';
+  const abrSel = document.createElement('select');
+  abrSel.id = 'set-enc-abr';
+  [64, 96, 128, 192, 256, 320].forEach(b => {
+    const o = document.createElement('option');
+    o.value = String(b); o.textContent = `${b} kbps`;
+    if (currentEncoding.audioBitrate === b) o.selected = true;
+    abrSel.appendChild(o);
+  });
+  abrRow.appendChild(abrSel);
+  brGroup.appendChild(abrRow);
+
+  enc.body.appendChild(brGroup);
+
+  // --- Keyframe group ---
+  const gopGroup = document.createElement('div');
+  gopGroup.className = 'settings-group';
+  gopGroup.innerHTML = '<h3>Keyframe</h3>';
+
+  const gopRow = document.createElement('div');
+  gopRow.className = 'settings-row';
+  gopRow.innerHTML = '<label>GOP Size</label>';
+  const gopInp = document.createElement('input');
+  gopInp.type = 'number'; gopInp.id = 'set-enc-gop';
+  gopInp.min = '0'; gopInp.max = '600';
+  gopInp.value = String(currentEncoding.gopSize);
+  gopRow.appendChild(gopInp);
+  gopGroup.appendChild(gopRow);
+
+  const gopNote = document.createElement('div');
+  gopNote.className = 'settings-note';
+  gopNote.textContent = 'Keyframe interval in frames. 0 = automatic (1 second).';
+  gopGroup.appendChild(gopNote);
+
+  enc.body.appendChild(gopGroup);
+
+  const encNote = document.createElement('div');
+  encNote.className = 'settings-note';
+  encNote.textContent = 'Auto-saved. Changes take effect on next stream start.';
+  enc.body.appendChild(encNote);
+
+  body.appendChild(enc.section);
+
+  // ── Auto-save for Stream Output & Encoding ──
+  function collectAndSaveOutputConfig() {
+    const resSelVal = resSel.value;
+    let w, h;
+    if (resSelVal === 'custom') {
+      w = Math.max(320, Math.min(7680, parseInt(widthInp.value) || currentResolution.width));
+      h = Math.max(240, Math.min(4320, parseInt(heightInp.value) || currentResolution.height));
+    } else {
+      [w, h] = resSelVal.split('x').map(Number);
+    }
+    const fps = parseFloat(fpsSel.value) || currentFrameRate;
+
+    const encoding = {
+      preset: presetSel.value,
+      profile: profileSel.value,
+      level: levelSel.value,
+      tune: tuneSel.value,
+      pixelFormat: pixSel.value,
+      videoBitrate: Math.max(500, parseInt(vbrInp.value) || currentEncoding.videoBitrate),
+      maxBitrate: Math.max(500, parseInt(mbrInp.value) || currentEncoding.maxBitrate),
+      bufferSize: Math.max(1000, parseInt(bufInp.value) || currentEncoding.bufferSize),
+      audioBitrate: parseInt(abrSel.value) || currentEncoding.audioBitrate,
+      gopSize: Math.max(0, parseInt(gopInp.value) || 0),
+    };
+
+    currentResolution = { width: w, height: h };
+    currentFrameRate = fps;
+    currentEncoding = encoding;
+
+    api.send('save-output-config', { resolution: { width: w, height: h }, frameRate: fps, encoding });
+  }
+
+  const debouncedSave = debounce(collectAndSaveOutputConfig, 600);
+
+  // Select-based controls save immediately, number inputs are debounced
+  [resSel, fpsSel, presetSel, profileSel, levelSel, tuneSel, pixSel, abrSel].forEach(el => {
+    el.addEventListener('change', collectAndSaveOutputConfig);
+  });
+  [widthInp, heightInp, vbrInp, mbrInp, bufInp, gopInp].forEach(el => {
+    el.addEventListener('input', debouncedSave);
+    el.addEventListener('change', collectAndSaveOutputConfig);
+  });
+
+  // ════════════════════════════════════════
+  // SECTION 3 — Speech Recognition Model
+  // ════════════════════════════════════════
+  const whisper = makeSettingsSection('Speech Recognition Model');
+  whisper.section.classList.add('full-width');
+  const whisperSection = whisper.section;
+  const whisperBody = whisper.body;
+
+  const whisperNote = document.createElement('div');
+  whisperNote.className = 'settings-note';
+  whisperNote.textContent = 'Select a whisper.cpp model for subtitle generation. Larger models are more accurate but slower.';
+  whisperBody.appendChild(whisperNote);
+
+  const whisperContainer = document.createElement('div');
+  whisperContainer.id = 'whisper-models-container';
+  whisperContainer.style.display = 'flex';
+  whisperContainer.style.flexDirection = 'column';
+  whisperContainer.style.gap = '4px';
+  whisperBody.appendChild(whisperContainer);
+
+  renderWhisperModels(whisperContainer);
+
+  whisperSection.appendChild(whisperBody);
+  body.appendChild(whisperSection);
 
   wrap.appendChild(body);
   area.appendChild(wrap);
-
-  rebuildKeysList();
-}
-
-function rebuildKeysList() {
-  const keysWrap = document.getElementById('stream-keys-wrap');
-  if (!keysWrap) return;
-  keysWrap.innerHTML = '';
-
-  const countInp = document.getElementById('set-stream-count');
-  const count = Math.max(1, Math.min(12, parseInt(countInp.value) || streams.length));
-
-  const label = document.createElement('h3');
-  label.style.marginTop = '6px';
-  label.textContent = 'Stream Keys';
-  keysWrap.appendChild(label);
-
-  const list = document.createElement('div');
-  list.className = 'stream-keys-list';
-
-  for (let i = 1; i <= count; i++) {
-    const existing = streams.find(s => s.id === i);
-    const row = document.createElement('div');
-    row.className = 'settings-row';
-    const lbl = document.createElement('label');
-    lbl.textContent = `Stream ${i}`;
-    const inp = document.createElement('input');
-    inp.type = 'text';
-    inp.dataset.streamId = String(i);
-    inp.className = 'stream-key-input';
-    inp.value = existing ? existing.streamName : `overlay${i}`;
-    inp.placeholder = `overlay${i}`;
-    row.appendChild(lbl);
-    row.appendChild(inp);
-
-    // Show running indicator
-    if (existing && (existing.status === 'running' || existing.status === 'starting')) {
-      const badge = document.createElement('span');
-      badge.style.cssText = 'font-size:9px;color:var(--success);font-weight:700;flex-shrink:0;';
-      badge.textContent = '● LIVE';
-      row.appendChild(badge);
-    }
-
-    list.appendChild(row);
-  }
-
-  keysWrap.appendChild(list);
 }
 
 function applySettings() {
@@ -1171,8 +2566,6 @@ function applySettings() {
   const streamCount = Math.max(1, Math.min(12, parseInt(countInp.value) || streams.length));
   const apiPort = parseInt(apiInp.value) || currentApiPort;
   const rtmpPort = parseInt(rtmpInp.value) || currentRtmpPort;
-  const chromaColorEl = document.getElementById('set-chroma-color');
-  const chromaKeyColor = chromaColorEl ? chromaColorEl.value : currentChromaKeyColor;
 
   // Validate ports
   if (apiPort < 1024 || apiPort > 65535 || rtmpPort < 1024 || rtmpPort > 65535) {
@@ -1181,21 +2574,6 @@ function applySettings() {
   }
   if (apiPort === rtmpPort) {
     if (msgEl) { msgEl.className = 'settings-msg err'; msgEl.textContent = 'API and RTMP ports must be different.'; }
-    return;
-  }
-
-  // Collect stream keys
-  const streamKeys = {};
-  document.querySelectorAll('.stream-key-input').forEach(inp => {
-    const id = parseInt(inp.dataset.streamId);
-    const val = inp.value.trim();
-    if (id <= streamCount && val) streamKeys[id] = val;
-  });
-
-  // Check for duplicate keys
-  const keyVals = Object.values(streamKeys);
-  if (new Set(keyVals).size !== keyVals.length) {
-    if (msgEl) { msgEl.className = 'settings-msg err'; msgEl.textContent = 'Stream keys must be unique.'; }
     return;
   }
 
@@ -1209,7 +2587,7 @@ function applySettings() {
   if (saveBtn) saveBtn.disabled = true;
   if (msgEl) { msgEl.className = 'settings-msg'; msgEl.textContent = 'Applying…'; }
 
-  api.send('update-settings', { streamCount, streamKeys, apiPort, rtmpPort, chromaKeyColor });
+  api.send('update-settings', { streamCount, apiPort, rtmpPort });
 }
 
 // ── Build a display-friendly RTMP URL using the LAN IP ──

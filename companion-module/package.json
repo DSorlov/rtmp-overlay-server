@@ -1,6 +1,6 @@
 {
   "name": "companion-module-rtmp-overlay-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Bitfocus Companion module for RTMP Overlay Server",
   "main": "dist/main.js",
   "type": "commonjs",

@@ -1,17 +1,24 @@
 import { ChildProcess, spawn } from 'child_process';
 import { EventEmitter } from 'events';
-import { Resolution } from './config';
+import { Resolution, EncodingConfig } from './config';
 import * as path from 'path';
 import * as fs from 'fs';
 import { app } from 'electron';
 import { findFFmpeg } from './ffmpeg-downloader';
+
+export type BackgroundMode = 'chroma' | 'alpha' | 'luma';
+export type AudioMode = 'none' | 'template' | 'device';
 
 export interface FFmpegOptions {
   streamId: number;
   rtmpUrl: string;
   resolution: Resolution;
   frameRate: number;
+  encoding?: EncodingConfig;
   ffmpegPath?: string;
+  backgroundMode?: BackgroundMode;
+  audioMode?: AudioMode;
+  audioDevice?: string;
 }
 
 /**
@@ -26,6 +33,9 @@ export class FFmpegManager extends EventEmitter {
   private _maxRestarts: number = 3;
   private frameQueue: Buffer[] = [];
   private writing: boolean = false;
+
+  private audioQueue: Buffer[] = [];
+  private audioWriting: boolean = false;
 
   constructor(options: FFmpegOptions) {
     super();
@@ -62,51 +72,112 @@ export class FFmpegManager extends EventEmitter {
 
     const { width, height } = this.options.resolution;
     const ffmpegPath = this.getFFmpegPath();
+    const isAlpha = this.options.backgroundMode === 'alpha';
+    const audioMode = this.options.audioMode || 'none';
+    const isMac = process.platform === 'darwin';
+    const enc: EncodingConfig = this.options.encoding || {
+      preset: 'ultrafast', profile: 'baseline', level: '4.0', tune: 'zerolatency',
+      videoBitrate: 4000, maxBitrate: 4500, bufferSize: 8000, gopSize: 0,
+      audioBitrate: 128, pixelFormat: 'yuv420p',
+    };
 
-    const args = [
+    const args: string[] = [
       // Input 0: raw BGRA frames from stdin
       '-f', 'rawvideo',
       '-pix_fmt', 'bgra',
       '-video_size', `${width}x${height}`,
       '-framerate', `${this.options.frameRate}`,
       '-i', 'pipe:0',
+    ];
 
-      // Input 1: silent audio (hardware mixers require an audio track)
-      '-f', 'lavfi',
-      '-i', 'anullsrc=r=44100:cl=stereo',
+    // Audio input depends on audioMode
+    if (audioMode === 'device' && this.options.audioDevice) {
+      // Device audio: platform-specific capture
+      if (isMac) {
+        args.push(
+          '-f', 'avfoundation',
+          '-i', `:${this.options.audioDevice}`,
+        );
+      } else {
+        // Windows (dshow)
+        args.push(
+          '-f', 'dshow',
+          '-i', `audio=${this.options.audioDevice}`,
+        );
+      }
+    } else if (audioMode === 'template') {
+      // Template audio: raw PCM from pipe:3
+      args.push(
+        '-f', 's16le',
+        '-ar', '44100',
+        '-ac', '2',
+        '-i', 'pipe:3',
+      );
+    } else {
+      // None: silent audio (hardware mixers require an audio track)
+      args.push(
+        '-f', 'lavfi',
+        '-i', 'anullsrc=r=44100:cl=stereo',
+      );
+    }
 
-      // Video encoding — baseline profile for maximum hardware compatibility
+    if (isAlpha) {
+      // Alpha mode: stacked-alpha output (top = RGB, bottom = alpha mask)
+      args.push(
+        '-filter_complex', '[0:v]split=2[rgb][alpha];[alpha]alphaextract[a];[rgb][a]vstack=inputs=2[out]',
+        '-map', '[out]',
+        '-map', '1:a:0',
+      );
+    } else {
+      // Chroma/luma mode: direct mapping
+      args.push(
+        '-map', '0:v:0',
+        '-map', '1:a:0',
+      );
+    }
+
+    args.push(
+      // Video encoding
       '-c:v', 'libx264',
-      '-preset', 'ultrafast',
-      '-tune', 'zerolatency',
-      '-profile:v', 'baseline',
-      '-level', '4.0',
-      '-pix_fmt', 'yuv420p',
-      '-b:v', '4000k',
-      '-maxrate', '4500k',
-      '-bufsize', '8000k',
-      '-g', `${this.options.frameRate}`, // Keyframe every 1 second (better for hardware)
+      '-preset', enc.preset,
+    );
+    if (enc.tune) {
+      args.push('-tune', enc.tune);
+    }
+    const gopSize = enc.gopSize > 0 ? enc.gopSize : Math.round(this.options.frameRate);
+    args.push(
+      '-profile:v', enc.profile,
+      '-level', enc.level,
+      '-pix_fmt', enc.pixelFormat,
+      '-b:v', `${enc.videoBitrate}k`,
+      '-maxrate', `${enc.maxBitrate}k`,
+      '-bufsize', `${enc.bufferSize}k`,
+      '-g', `${gopSize}`,
 
-      // Audio encoding — silent AAC track
+      // Audio encoding
       '-c:a', 'aac',
-      '-b:a', '128k',
+      '-b:a', `${enc.audioBitrate}k`,
       '-ar', '44100',
       '-ac', '2',
 
       // Map both streams and set shortest so it stops with video
-      '-map', '0:v:0',
-      '-map', '1:a:0',
       '-shortest',
 
       // Output: RTMP push to local server
       '-f', 'flv',
       this.options.rtmpUrl,
-    ];
+    );
 
     console.log(`[FFmpeg ${this.options.streamId}] Starting: ${ffmpegPath} ${args.join(' ')}`);
 
+    // stdio: stdin(0)=pipe, stdout(1)=pipe, stderr(2)=pipe, fd3=pipe (for template audio)
+    const stdio: Array<'pipe' | 'ignore'> = ['pipe', 'pipe', 'pipe'];
+    if (audioMode === 'template') {
+      stdio.push('pipe'); // fd 3 for PCM audio input
+    }
+
     this.process = spawn(ffmpegPath, args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio,
     });
 
     this._isRunning = true;
@@ -120,7 +191,21 @@ export class FFmpegManager extends EventEmitter {
       }
       this._isRunning = false;
       this.frameQueue = [];
+      this.audioQueue = [];
     });
+
+    // Handle audio pipe errors (fd 3) for template mode
+    const audioPipe = (this.process as any).stdio?.[3] as import('stream').Writable | null;
+    if (audioPipe) {
+      audioPipe.on('error', (err: any) => {
+        if (err.code === 'EPIPE') {
+          console.warn(`[FFmpeg ${this.options.streamId}] Audio pipe broken`);
+        } else {
+          console.error(`[FFmpeg ${this.options.streamId}] Audio pipe error:`, err.message);
+        }
+        this.audioQueue = [];
+      });
+    }
 
     this.process.stdout?.on('data', (data: Buffer) => {
       // FFmpeg stdout (usually empty for this config)
@@ -207,6 +292,53 @@ export class FFmpegManager extends EventEmitter {
   }
 
   /**
+   * Write raw PCM audio data to FFmpeg's audio pipe (fd 3).
+   * Only used in 'template' audio mode.
+   */
+  writeAudio(buffer: Buffer): void {
+    const audioPipe = (this.process as any)?.stdio?.[3] as import('stream').Writable | undefined;
+    if (!this._isRunning || !audioPipe || !audioPipe.writable || audioPipe.destroyed) return;
+
+    this.audioQueue.push(buffer);
+
+    // Keep queue bounded — drop oldest chunks if falling behind
+    while (this.audioQueue.length > 10) {
+      this.audioQueue.shift();
+    }
+
+    this.drainAudioQueue();
+  }
+
+  private drainAudioQueue(): void {
+    if (this.audioWriting || this.audioQueue.length === 0) return;
+    const audioPipe = (this.process as any)?.stdio?.[3] as import('stream').Writable | undefined;
+    if (!audioPipe || !audioPipe.writable || audioPipe.destroyed) {
+      this.audioQueue = [];
+      return;
+    }
+
+    this.audioWriting = true;
+    const chunk = this.audioQueue.shift()!;
+
+    try {
+      const canWrite = audioPipe.write(chunk);
+      if (canWrite) {
+        this.audioWriting = false;
+        this.drainAudioQueue();
+      } else {
+        audioPipe.once('drain', () => {
+          this.audioWriting = false;
+          this.drainAudioQueue();
+        });
+      }
+    } catch (err: any) {
+      this.audioWriting = false;
+      this.audioQueue = [];
+      console.warn(`[FFmpeg ${this.options.streamId}] Audio write exception:`, err.message);
+    }
+  }
+
+  /**
    * Stop the FFmpeg process
    */
   stop(): void {
@@ -214,8 +346,15 @@ export class FFmpegManager extends EventEmitter {
 
     this._restartCount = this._maxRestarts; // Prevent auto-restart
     this.frameQueue = [];
+    this.audioQueue = [];
 
     try {
+      // Close audio pipe (fd 3) if present
+      const audioPipe = (this.process as any).stdio?.[3] as import('stream').Writable | undefined;
+      if (audioPipe && !audioPipe.destroyed) {
+        audioPipe.end();
+      }
+
       // Send 'q' to FFmpeg for graceful shutdown
       if (this.process.stdin?.writable) {
         this.process.stdin.end();
@@ -247,5 +386,141 @@ export class FFmpegManager extends EventEmitter {
    */
   resetRestartCounter(): void {
     this._restartCount = 0;
+  }
+
+  /**
+   * List available audio input devices using FFmpeg.
+   * Returns an array of device name strings.
+   */
+  static listAudioDevices(ffmpegPath?: string): Promise<string[]> {
+    const resolvedPath = ffmpegPath || findFFmpeg() || 'ffmpeg';
+    const isMac = process.platform === 'darwin';
+
+    return new Promise((resolve) => {
+      let stderr = '';
+      let args: string[];
+
+      if (isMac) {
+        args = ['-f', 'avfoundation', '-list_devices', 'true', '-i', ''];
+      } else {
+        args = ['-f', 'dshow', '-list_devices', 'true', '-i', 'dummy'];
+      }
+
+      const proc = spawn(resolvedPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+
+      proc.stderr?.on('data', (data: Buffer) => { stderr += data.toString(); });
+      proc.stdout?.on('data', (data: Buffer) => { stderr += data.toString(); });
+
+      proc.on('close', () => {
+        const devices: string[] = [];
+        if (isMac) {
+          // AVFoundation lists audio devices after "AVFoundation audio devices:"
+          const audioSection = stderr.split(/AVFoundation audio devices:/i)[1];
+          if (audioSection) {
+            const lines = audioSection.split('\n');
+            for (const line of lines) {
+              // Parse lines like: [AVFoundation indev @ ...] [0] Built-in Microphone
+              const m = line.match(/\[(\d+)]\s+(.+)/);
+              if (m) {
+                devices.push(m[1]); // Use index as device identifier for avfoundation
+              } else if (line.match(/AVFoundation/i) && devices.length > 0) {
+                break; // End of audio section
+              }
+            }
+          }
+        } else {
+          // dshow lists devices in quotes: "DeviceName" (audio)
+          const lines = stderr.split('\n');
+          let inAudio = false;
+          for (const line of lines) {
+            if (line.includes('DirectShow audio devices')) {
+              inAudio = true;
+              continue;
+            }
+            if (inAudio && line.includes('DirectShow video devices')) break;
+            if (inAudio) {
+              const m = line.match(/"([^"]+)"/);
+              if (m) devices.push(m[1]);
+            }
+          }
+        }
+        resolve(devices);
+      });
+
+      proc.on('error', () => resolve([]));
+
+      // Don't let it hang
+      setTimeout(() => {
+        try { proc.kill(); } catch { /* ignore */ }
+      }, 5000);
+    });
+  }
+
+  /**
+   * Get a human-readable name for a device index (macOS avfoundation).
+   * Returns an array of { index, name } pairs.
+   */
+  static listAudioDevicesDetailed(ffmpegPath?: string): Promise<Array<{ index: string; name: string }>> {
+    const resolvedPath = ffmpegPath || findFFmpeg() || 'ffmpeg';
+    const isMac = process.platform === 'darwin';
+
+    return new Promise((resolve) => {
+      let stderr = '';
+      let args: string[];
+
+      if (isMac) {
+        args = ['-f', 'avfoundation', '-list_devices', 'true', '-i', ''];
+      } else {
+        args = ['-f', 'dshow', '-list_devices', 'true', '-i', 'dummy'];
+      }
+
+      const proc = spawn(resolvedPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+
+      proc.stderr?.on('data', (data: Buffer) => { stderr += data.toString(); });
+      proc.stdout?.on('data', (data: Buffer) => { stderr += data.toString(); });
+
+      proc.on('close', () => {
+        const devices: Array<{ index: string; name: string }> = [];
+        if (isMac) {
+          const audioSection = stderr.split(/AVFoundation audio devices:/i)[1];
+          if (audioSection) {
+            const lines = audioSection.split('\n');
+            for (const line of lines) {
+              const m = line.match(/\[(\d+)]\s+(.+)/);
+              if (m) {
+                devices.push({ index: m[1], name: m[2].trim() });
+              } else if (line.match(/AVFoundation/i) && devices.length > 0) {
+                break;
+              }
+            }
+          }
+        } else {
+          const lines = stderr.split('\n');
+          let inAudio = false;
+          let idx = 0;
+          for (const line of lines) {
+            if (line.includes('DirectShow audio devices')) {
+              inAudio = true;
+              continue;
+            }
+            if (inAudio && line.includes('DirectShow video devices')) break;
+            if (inAudio) {
+              const m = line.match(/"([^"]+)"/);
+              if (m) {
+                devices.push({ index: String(idx), name: m[1] });
+                idx++;
+              }
+            }
+          }
+        }
+        resolve(devices);
+      });
+
+      proc.on('error', () => resolve([]));
+
+      setTimeout(() => {
+        try { proc.kill(); } catch { /* ignore */ }
+      }, 5000);
+    });
   }
 }

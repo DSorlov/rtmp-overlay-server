@@ -1,7 +1,8 @@
 <!--
   Scoreboard Overlay Template
-  Placeholders: {{teamA}}, {{teamB}}, {{scoreA}}, {{scoreB}}, {{time}}
+  Placeholders: {{teamA}}, {{teamB}}, {{scoreA}}, {{scoreB}}
   Sports-style scoreboard displayed at the top of the screen.
+  Uses the built-in timer system for the clock display.
 -->
 <style>
   .scoreboard {
@@ -54,14 +55,13 @@
   .score-b { color: #42a5f5; }
 
   .divider {
-    background: rgba(255, 255, 255, 0.15);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 10px 16px;
-    font-size: 18px;
+    font-size: 28px;
     color: #ffffff;
-    font-weight: 600;
+    font-weight: 700;
     font-family: monospace;
     min-width: 80px;
     background: rgba(50, 50, 50, 0.95);
@@ -79,7 +79,7 @@
     <span class="score score-a" data-placeholder="scoreA">{{scoreA}}</span>
   </div>
   <div class="divider">
-    <span data-placeholder="time">{{time}}</span>
+    <span data-timer>00:00</span>
   </div>
   <div class="team team-b">
     <span class="score score-b" data-placeholder="scoreB">{{scoreB}}</span>

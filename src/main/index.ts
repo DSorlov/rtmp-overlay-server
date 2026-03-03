@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -8,6 +8,8 @@ import { StreamManager } from './stream-manager';
 import { RtmpServer } from './rtmp-server';
 import { createApiServer } from './api';
 import { ensureFFmpeg } from './ffmpeg-downloader';
+import { ensureWhisper, downloadWhisper, setActiveModel, clearActiveModel, getWhisperModelStatus, downloadWhisperModel, deleteWhisperModel, cancelWhisperModelDownload } from './whisper-downloader';
+import { FFmpegManager } from './ffmpeg-manager';
 import type { FastifyInstance } from 'fastify';
 
 // Enable reliable off-screen rendering on Windows
@@ -151,6 +153,15 @@ function buildAppMenu(): void {
         { label: 'About RTMP Overlay Server', click: () => showAboutDialog() } as Electron.MenuItemConstructorOptions,
         { type: 'separator' as const },
       ] : []),
+      {
+        label: 'Open Templates Folder',
+        click: () => {
+          if (templateManager) {
+            shell.openPath(templateManager.getUserTemplatesDir());
+          }
+        },
+      },
+      { type: 'separator' },
       isMac ? { role: 'close' as const } : { role: 'quit' as const },
     ],
   });
@@ -306,8 +317,11 @@ function setupIPC(): void {
       templatePlaceholders,
       apiPort: config.apiPort,
       rtmpPort: config.rtmpPort,
+      resolution: config.resolution,
+      frameRate: config.frameRate,
+      encoding: config.encoding,
       hostIP: getLocalIP(),
-      chromaKeyColor: config.chromaKeyColor,
+      whisperModels: getWhisperModelStatus(),
     });
   });
 
@@ -345,18 +359,161 @@ function setupIPC(): void {
           break;
         case 'set-chroma': {
           const { color } = payload;
+          const effectiveColor = color || '#00FF00';
           const config = streamManager!.getConfig();
           const sc = config.streams.find(s => s.id === streamId);
           if (sc) {
-            if (!color || color === config.chromaKeyColor) {
-              delete sc.chromaKeyColor;
-            } else {
-              sc.chromaKeyColor = color;
-            }
+            sc.chromaKeyColor = effectiveColor;
             saveConfig(config);
           }
-          const effectiveColor = color || config.chromaKeyColor;
           await streamManager!.updateStreamChromaColor(streamId, effectiveColor);
+          break;
+        }
+        case 'set-background-mode': {
+          const { mode } = payload;
+          if (mode !== 'chroma' && mode !== 'alpha' && mode !== 'luma') break;
+          const config = streamManager!.getConfig();
+          const sc = config.streams.find(s => s.id === streamId);
+          if (sc) {
+            sc.backgroundMode = mode;
+            saveConfig(config);
+          }
+          await streamManager!.updateStreamBackgroundMode(streamId, mode);
+          break;
+        }
+        case 'set-luma-inverted': {
+          const { inverted } = payload;
+          const config = streamManager!.getConfig();
+          const sc = config.streams.find(s => s.id === streamId);
+          if (sc) {
+            sc.lumaInverted = !!inverted;
+            saveConfig(config);
+          }
+          await streamManager!.updateStreamLumaInverted(streamId, !!inverted);
+          break;
+        }
+        case 'set-audio-mode': {
+          const { mode } = payload;
+          if (mode !== 'none' && mode !== 'template' && mode !== 'device') break;
+          const config = streamManager!.getConfig();
+          const sc = config.streams.find(s => s.id === streamId);
+          if (sc) {
+            sc.audioMode = mode;
+            saveConfig(config);
+          }
+          await streamManager!.updateStreamAudioMode(streamId, mode);
+          break;
+        }
+        case 'set-audio-device': {
+          const { device } = payload;
+          const config = streamManager!.getConfig();
+          const sc = config.streams.find(s => s.id === streamId);
+          if (sc) {
+            sc.audioDevice = device || '';
+            saveConfig(config);
+          }
+          await streamManager!.updateStreamAudioDevice(streamId, device || '');
+          break;
+        }
+        case 'set-stream-key': {
+          const { key } = payload;
+          const trimmed = (key || '').trim();
+          if (!trimmed) break;
+          const config = streamManager!.getConfig();
+          const sc = config.streams.find(s => s.id === streamId);
+          if (sc) {
+            sc.streamName = trimmed;
+            saveConfig(config);
+          }
+          await streamManager!.updateStreamKey(streamId, trimmed);
+          break;
+        }
+        case 'set-subtitles-enabled': {
+          const { enabled } = payload;
+          const config = streamManager!.getConfig();
+          const sc = config.streams.find(s => s.id === streamId);
+          if (sc) {
+            sc.subtitlesEnabled = !!enabled;
+            saveConfig(config);
+          }
+          // If enabling, ensure whisper binary is downloaded
+          if (enabled && !config.whisperPath) {
+            try {
+              const whisperPath = await downloadWhisper(mainWindow);
+              config.whisperPath = whisperPath;
+              saveConfig(config);
+            } catch {
+              // Download cancelled or failed — don't enable subtitles
+              if (sc) sc.subtitlesEnabled = false;
+              saveConfig(config);
+              break;
+            }
+          }
+          // If enabling, ensure a model is downloaded
+          if (enabled) {
+            const models = getWhisperModelStatus();
+            const anyDownloaded = models.some(m => m.downloaded);
+            if (!anyDownloaded) {
+              // No model available — ask user to pick one
+              if (sc) sc.subtitlesEnabled = false;
+              saveConfig(config);
+              sendToRenderer('whisper-model-needed', { streamId });
+              break;
+            }
+            // If the active model isn't downloaded, auto-select the first downloaded one
+            const activeModel = models.find(m => m.active);
+            if (!activeModel || !activeModel.downloaded) {
+              const firstDownloaded = models.find(m => m.downloaded);
+              if (firstDownloaded) {
+                setActiveModel(firstDownloaded.id);
+                config.whisperModel = firstDownloaded.id;
+                saveConfig(config);
+              }
+            }
+          }
+          await streamManager!.updateStreamSubtitles(streamId, !!enabled);
+          break;
+        }
+        case 'set-subtitle-language': {
+          const { language } = payload;
+          const langVal = language || 'auto';
+          const config = streamManager!.getConfig();
+          const sc = config.streams.find(s => s.id === streamId);
+          if (sc) {
+            sc.subtitleLanguage = langVal;
+            saveConfig(config);
+          }
+          await streamManager!.updateStreamSubtitleLanguage(streamId, langVal);
+          break;
+        }
+        case 'execute-function': {
+          const { functionName, argument } = payload;
+          if (!functionName) break;
+          const fnResult = await streamManager!.executeFunction(streamId, functionName, argument);
+          sendToRenderer('function-result', { streamId, functionName, ...fnResult });
+          break;
+        }
+        case 'timer-set-duration': {
+          const { seconds } = payload;
+          streamManager!.setTimerDuration(streamId, Number(seconds) || 0);
+          break;
+        }
+        case 'timer-set-direction': {
+          const { direction } = payload;
+          if (direction !== 'up' && direction !== 'down') break;
+          streamManager!.setTimerDirection(streamId, direction);
+          break;
+        }
+        case 'timer-start': {
+          streamManager!.startTimer(streamId);
+          break;
+        }
+        case 'timer-stop': {
+          streamManager!.stopTimer(streamId);
+          break;
+        }
+        case 'timer-reset': {
+          streamManager!.resetTimer(streamId);
           break;
         }
       }
@@ -365,10 +522,137 @@ function setupIPC(): void {
     }
   });
 
+  // Renderer requests audio device list
+  ipcMain.on('get-audio-devices', async () => {
+    try {
+      const config = loadConfig();
+      const devices = await FFmpegManager.listAudioDevicesDetailed(config.ffmpegPath);
+      sendToRenderer('audio-devices', devices);
+    } catch (err: any) {
+      console.error('[IPC] get-audio-devices failed:', err.message);
+      sendToRenderer('audio-devices', []);
+    }
+  });
+
+  // ── Whisper model management ──────────────────────────────
+
+  // Get status of all whisper models (downloaded / active)
+  ipcMain.on('get-whisper-status', () => {
+    sendToRenderer('whisper-status', getWhisperModelStatus());
+  });
+
+  // Set the active whisper model
+  ipcMain.on('set-whisper-model', (_event, modelId: string) => {
+    try {
+      setActiveModel(modelId);
+      const config = loadConfig();
+      config.whisperModel = modelId;
+      saveConfig(config);
+      sendToRenderer('whisper-status', getWhisperModelStatus());
+    } catch (err: any) {
+      console.error('[IPC] set-whisper-model failed:', err.message);
+    }
+  });
+
+  // Download a specific whisper model
+  ipcMain.on('download-whisper-model', async (_event, modelId: string) => {
+    try {
+      await downloadWhisperModel(modelId, mainWindow);
+      sendToRenderer('whisper-status', getWhisperModelStatus());
+    } catch (err: any) {
+      console.error('[IPC] download-whisper-model failed:', err.message);
+      sendToRenderer('whisper-status', getWhisperModelStatus());
+    }
+  });
+
+  // Cancel an active model download
+  ipcMain.on('cancel-whisper-download', () => {
+    cancelWhisperModelDownload();
+  });
+
+  // User picked a model from the model-needed dialog
+  ipcMain.on('whisper-model-selected', async (_event, payload: { modelId: string; streamId: number }) => {
+    const { modelId, streamId } = payload;
+    try {
+      // Download the chosen model
+      await downloadWhisperModel(modelId, mainWindow);
+
+      // Set it as active
+      setActiveModel(modelId);
+      const config = loadConfig();
+      config.whisperModel = modelId;
+      saveConfig(config);
+
+      sendToRenderer('whisper-status', getWhisperModelStatus());
+
+      // Now enable subtitles on the stream that triggered it
+      if (streamManager) {
+        const sc = config.streams.find(s => s.id === streamId);
+        if (sc) {
+          sc.subtitlesEnabled = true;
+          saveConfig(config);
+        }
+        await streamManager.updateStreamSubtitles(streamId, true);
+      }
+    } catch (err: any) {
+      console.error('[IPC] whisper-model-selected failed:', err.message);
+      sendToRenderer('whisper-status', getWhisperModelStatus());
+    }
+  });
+
+  // Delete a downloaded whisper model
+  ipcMain.on('delete-whisper-model', async (_event, modelId: string) => {
+    try {
+      const status = getWhisperModelStatus();
+      const model = status.find(m => m.id === modelId);
+
+      // If deleting the active model, disable subtitles on all streams first
+      if (model && model.active && streamManager) {
+        const config = streamManager.getConfig();
+        for (const sc of config.streams) {
+          if (sc.subtitlesEnabled) {
+            sc.subtitlesEnabled = false;
+            await streamManager.updateStreamSubtitles(sc.id, false);
+          }
+        }
+        clearActiveModel();
+        config.whisperModel = '';
+        saveConfig(config);
+      }
+
+      deleteWhisperModel(modelId);
+      sendToRenderer('whisper-status', getWhisperModelStatus());
+    } catch (err: any) {
+      console.error('[IPC] delete-whisper-model failed:', err.message);
+      sendToRenderer('whisper-status', getWhisperModelStatus());
+    }
+  });
+
+  // Auto-save output config (resolution, framerate, encoding) without restart
+  ipcMain.on('save-output-config', (_event, payload) => {
+    if (!streamManager) return;
+    try {
+      const config = streamManager.getConfig();
+      if (payload.resolution) {
+        config.resolution = { width: payload.resolution.width, height: payload.resolution.height };
+      }
+      if (payload.frameRate != null) {
+        config.frameRate = payload.frameRate;
+      }
+      if (payload.encoding) {
+        config.encoding = { ...config.encoding, ...payload.encoding };
+      }
+      saveConfig(config);
+      console.log('[Main] Output config auto-saved');
+    } catch (err: any) {
+      console.error('[Main] Output config save failed:', err.message);
+    }
+  });
+
   // Renderer requests settings update
   ipcMain.on('update-settings', async (_event, payload) => {
     if (!streamManager || !templateManager) return;
-    const { streamCount, streamKeys, apiPort: newApiPort, rtmpPort: newRtmpPort, chromaKeyColor: newChromaKeyColor } = payload;
+    const { streamCount, apiPort: newApiPort, rtmpPort: newRtmpPort } = payload;
 
     try {
       const config = streamManager.getConfig();
@@ -385,25 +669,14 @@ function setupIPC(): void {
       // ─ 2. Add streams if count raised ─
       if (streamCount > currentCount) {
         for (let id = currentCount + 1; id <= streamCount; id++) {
-          const streamName = (streamKeys && streamKeys[id]) || `overlay${id}`;
+          const streamName = `overlay${id}`;
           const sc = { id, streamName, defaultTemplate: 'lower-third.html', enabled: true };
           config.streams.push(sc);
           streamManager.addStream(sc);
         }
       }
 
-      // ─ 3. Update stream keys for existing streams ─
-      if (streamKeys) {
-        for (const [idStr, key] of Object.entries(streamKeys)) {
-          const id = Number(idStr);
-          if (id > streamCount) continue;
-          const sc = config.streams.find(s => s.id === id);
-          if (sc) sc.streamName = key as string;
-          await streamManager.updateStreamKey(id, key as string);
-        }
-      }
-
-      // ─ 4. Handle RTMP port change ─
+      // ─ 3. Handle RTMP port change ─
       const rtmpChanged = newRtmpPort && newRtmpPort !== config.rtmpPort;
       if (rtmpChanged) {
         // Stop all streams first
@@ -422,7 +695,7 @@ function setupIPC(): void {
         streamManager.updateRtmpPort(newRtmpPort);
       }
 
-      // ─ 5. Handle API port change ─
+      // ─ 4. Handle API port change ─
       const apiChanged = newApiPort && newApiPort !== config.apiPort;
       if (apiChanged) {
         if (apiServer) {
@@ -433,23 +706,10 @@ function setupIPC(): void {
         apiServer = await createApiServer(streamManager, templateManager, newApiPort, rtmpServer!);
       }
 
-      // ─ 6. Update default chroma key color ─
-      if (newChromaKeyColor && newChromaKeyColor !== config.chromaKeyColor) {
-        config.chromaKeyColor = newChromaKeyColor;
-        // Update any stream that was using the old global default
-        for (const state of streamManager.getAllStreams()) {
-          const sc = config.streams.find(s => s.id === state.id);
-          if (sc && !sc.chromaKeyColor) {
-            // Stream uses global default — update its effective color (restarts if running)
-            await streamManager.updateStreamChromaColor(state.id, newChromaKeyColor);
-          }
-        }
-      }
-
-      // ─ 7. Save config to disk ─
+      // ─ 5. Save config to disk ─
       saveConfig(config);
 
-      // ─ 7. Send refreshed state to renderer ─
+      // ─ 6. Send refreshed state to renderer ─
       const templatePlaceholders: Record<string, string[]> = {};
       for (const t of templateManager.listTemplates()) {
         templatePlaceholders[t] = templateManager.getPlaceholders(t);
@@ -460,8 +720,11 @@ function setupIPC(): void {
         templatePlaceholders,
         apiPort: config.apiPort,
         rtmpPort: config.rtmpPort,
+        resolution: config.resolution,
+        frameRate: config.frameRate,
+        encoding: config.encoding,
         hostIP: getLocalIP(),
-        chromaKeyColor: config.chromaKeyColor,
+        whisperModels: getWhisperModelStatus(),
       });
 
       sendToRenderer('settings-saved', { success: true });
@@ -505,15 +768,32 @@ async function main(): Promise<void> {
     const config = loadConfig();
     console.log(`[Main] Loaded config: ${config.streams.length} streams, RTMP port ${config.rtmpPort}, API port ${config.apiPort}`);
 
-    // Initialize template manager
+    // Initialize template manager and sync bundled templates to user directory
     templateManager = new TemplateManager();
+    const updatedTemplates = templateManager.syncTemplates();
     const templates = templateManager.listTemplates();
+    console.log(`[Main] Templates dir: ${templateManager.getUserTemplatesDir()}`);
     console.log(`[Main] Found ${templates.length} templates: ${templates.join(', ')}`);
+    if (updatedTemplates.length > 0) {
+      console.log(`[Main] ${updatedTemplates.length} bundled template(s) have newer versions`);
+    }
 
     // Ensure FFmpeg is available (downloads automatically if missing)
     const ffmpegPath = await ensureFFmpeg();
     config.ffmpegPath = ffmpegPath;
     console.log(`[Main] Using FFmpeg: ${ffmpegPath}`);
+
+    // Check for whisper.cpp (don't prompt — download happens when subtitles are first enabled)
+    const whisperPath = await ensureWhisper();
+    config.whisperPath = whisperPath;
+    if (whisperPath) {
+      console.log(`[Main] Using Whisper: ${whisperPath}`);
+    } else {
+      console.log('[Main] Whisper not found — will download when subtitles are enabled');
+    }
+
+    // Set the active whisper model from config
+    setActiveModel(config.whisperModel || 'base');
 
     // Start the RTMP server
     rtmpServer = new RtmpServer(config.rtmpPort);
@@ -574,8 +854,11 @@ async function main(): Promise<void> {
           templatePlaceholders,
           apiPort: config.apiPort,
           rtmpPort: config.rtmpPort,
+          resolution: config.resolution,
+          frameRate: config.frameRate,
+          encoding: config.encoding,
           hostIP: getLocalIP(),
-          chromaKeyColor: config.chromaKeyColor,
+          whisperModels: getWhisperModelStatus(),
         });
       }
     }, 300);
@@ -590,6 +873,48 @@ async function main(): Promise<void> {
         streamManager.startStream(id).catch((err: any) => {
           console.warn(`[Main] Failed to auto-start stream ${id}:`, err.message);
         });
+      }
+    }
+
+    // Prompt user if bundled templates have been updated
+    if (updatedTemplates.length > 0 && mainWindow) {
+      const names = updatedTemplates.map(t => t.name);
+      const result = await dialog.showMessageBox(mainWindow, {
+        type: 'question',
+        buttons: ['Update All', 'Skip'],
+        defaultId: 1,
+        cancelId: 1,
+        title: 'Template Updates Available',
+        message: `${names.length} included template${names.length > 1 ? 's have' : ' has'} been updated:`,
+        detail: names.join('\n') + '\n\nWould you like to replace your copies with the new versions? Your customisations will be lost for the selected templates.',
+      });
+      if (result.response === 0) {
+        templateManager.applyBundledUpdates(names);
+        console.log('[Main] User accepted template updates');
+        // Reload updated templates in any running streams
+        if (streamManager) {
+          await streamManager.reloadTemplates(names);
+        }
+        // Refresh template list in the renderer
+        const templatePlaceholders: Record<string, string[]> = {};
+        for (const t of templateManager.listTemplates()) {
+          templatePlaceholders[t] = templateManager.getPlaceholders(t);
+        }
+        sendToRenderer('templates-updated', templateManager.listTemplates());
+        sendToRenderer('init-data', {
+          streams: streamManager!.getAllStreams(),
+          templates: templateManager.listTemplates(),
+          templatePlaceholders,
+          apiPort: config.apiPort,
+          rtmpPort: config.rtmpPort,
+          resolution: config.resolution,
+          frameRate: config.frameRate,
+          encoding: config.encoding,
+          hostIP: getLocalIP(),
+          whisperModels: getWhisperModelStatus(),
+        });
+      } else {
+        console.log('[Main] User skipped template updates');
       }
     }
 

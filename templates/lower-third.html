@@ -66,3 +66,40 @@
   <div class="name-bar" data-placeholder="name" data-hide-empty>{{name}}</div>
   <div class="title-bar" data-placeholder="title" data-hide-empty>{{title}}</div>
 </div>
+
+<script>
+  // Example callable functions — invoke from the GUI, API, or Companion:
+  //   Function: "flash"          Argument: (none)
+  //   Function: "setColor"       Argument: "#ff5722"
+  //   Function: "showMessage"    Argument: '{"text":"Hello","duration":3000}'
+
+  /** Flash the lower-third bar briefly */
+  window.flash = function () {
+    var el = document.querySelector('.lower-third');
+    if (!el) return;
+    el.style.transition = 'opacity 0.1s';
+    el.style.opacity = '0';
+    setTimeout(function () { el.style.opacity = '1'; }, 150);
+    setTimeout(function () { el.style.opacity = '0'; }, 300);
+    setTimeout(function () { el.style.opacity = '1'; el.style.transition = ''; }, 450);
+  };
+
+  /** Change the accent color of the name bar border and title bar */
+  window.setColor = function (color) {
+    var nameBar = document.querySelector('.name-bar');
+    var titleBar = document.querySelector('.title-bar');
+    if (nameBar) nameBar.style.borderLeftColor = color;
+    if (titleBar) titleBar.style.background = color;
+  };
+
+  /** Temporarily show a message in the title bar, then revert */
+  window.showMessage = function (opts) {
+    var titleBar = document.querySelector('.title-bar');
+    if (!titleBar) return;
+    var original = titleBar.textContent;
+    titleBar.textContent = opts.text || '';
+    if (opts.duration) {
+      setTimeout(function () { titleBar.textContent = original; }, opts.duration);
+    }
+  };
+</script>

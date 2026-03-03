@@ -1,6 +1,7 @@
 <!--
   Simple Text Overlay Template
   Placeholders: {{message}}, {{subtitle}}
+  Timer: Include a data-timer element that receives the countdown/countup display.
   Centered text overlay for announcements, breaks, or simple messages.
   Elements hide automatically when their placeholder value is empty.
 -->
@@ -28,6 +29,20 @@
     margin-bottom: 16px;
   }
 
+  .simple-text .timer-display {
+    color: #4ade80;
+    font-size: 72px;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    line-height: 1;
+    margin-bottom: 16px;
+    letter-spacing: 4px;
+  }
+
+  .simple-text .timer-display.timer-stopped {
+    color: #f87171;
+  }
+
   .simple-text .subtitle {
     color: rgba(255, 255, 255, 0.85);
     font-size: 28px;
@@ -40,7 +55,8 @@
   }
 </style>
 
-<div class="simple-text" data-hide-when-children-empty>
+<div class="simple-text">
   <div class="message" data-placeholder="message" data-hide-empty>{{message}}</div>
+  <div class="timer-display" data-timer data-hide-empty></div>
   <div class="subtitle" data-placeholder="subtitle" data-hide-empty>{{subtitle}}</div>
 </div>
